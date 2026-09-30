@@ -196,7 +196,7 @@
     $("current-desc").textContent = w.text;
     $("current-hilo").textContent = `H: ${fmtTemp(d.temperature_2m_max[0])}  L: ${fmtTemp(d.temperature_2m_min[0])}`;
 
-    const windUnit = data.current_units.wind_speed_10m;
+    const windUnit = state.unit === "fahrenheit" ? "mph" : "km/h";
     $("stat-feels").textContent = fmtTemp(c.apparent_temperature);
     $("stat-humidity").textContent = `${round(c.relative_humidity_2m)}%`;
     $("stat-wind").textContent = `${round(c.wind_speed_10m)} ${windUnit} ${compass(c.wind_direction_10m)}`;

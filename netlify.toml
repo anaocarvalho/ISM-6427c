@@ -1,0 +1,16 @@
+# Static site: no build step needed. Netlify serves the repo root as-is.
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(self)"
+
+[[headers]]
+  for = "/*.{css,js}"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

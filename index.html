@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boca Weather</title>
+  <meta name="description" content="Live weather for Boca Raton and anywhere else, powered by Open-Meteo." />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f4f7fb" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0e1420" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>" />
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">⛅</span>
+      <span class="brand-name">Boca Weather</span>
+    </div>
+    <div class="theme-switch" role="radiogroup" aria-label="Theme">
+      <button type="button" role="radio" data-theme-choice="light" aria-label="Light theme" title="Light">☀️</button>
+      <button type="button" role="radio" data-theme-choice="dark" aria-label="Dark theme" title="Dark">🌙</button>
+      <button type="button" role="radio" data-theme-choice="system" aria-label="System theme" title="System">🖥️</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="greeting">
+      <h1 id="greeting">Hello, Ana Cecília!</h1>
+      <p id="greeting-sub" class="muted">Here's the latest weather.</p>
+    </section>
+
+    <form id="search-form" class="search" role="search" autocomplete="off">
+      <label for="search-input" class="sr-only">Search for a city</label>
+      <input id="search-input" type="search" placeholder="Search a city…" />
+      <button type="submit">Search</button>
+      <button type="button" id="locate-btn" title="Use my location" aria-label="Use my location">📍</button>
+      <button type="button" id="home-btn" title="Back to Boca Raton" aria-label="Back to Boca Raton">🏠</button>
+      <ul id="search-results" class="search-results" hidden></ul>
+    </form>
+
+    <div class="units" role="radiogroup" aria-label="Units">
+      <button type="button" role="radio" data-unit="fahrenheit">°F</button>
+      <button type="button" role="radio" data-unit="celsius">°C</button>
+    </div>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+
+    <section id="current" class="card current" hidden>
+      <div class="current-main">
+        <div>
+          <h2 id="place-name" class="place"></h2>
+          <p id="updated" class="muted small"></p>
+        </div>
+        <div class="current-temp">
+          <span id="current-icon" class="big-icon" aria-hidden="true"></span>
+          <span id="current-temp" class="temp"></span>
+        </div>
+        <p id="current-desc" class="desc"></p>
+        <p id="current-hilo" class="muted"></p>
+      </div>
+      <dl class="stats">
+        <div><dt>Feels like</dt><dd id="stat-feels"></dd></div>
+        <div><dt>Humidity</dt><dd id="stat-humidity"></dd></div>
+        <div><dt>Wind</dt><dd id="stat-wind"></dd></div>
+        <div><dt>Rain chance</dt><dd id="stat-precip"></dd></div>
+        <div><dt>UV index</dt><dd id="stat-uv"></dd></div>
+        <div><dt>Pressure</dt><dd id="stat-pressure"></dd></div>
+        <div><dt>Sunrise</dt><dd id="stat-sunrise"></dd></div>
+        <div><dt>Sunset</dt><dd id="stat-sunset"></dd></div>
+      </dl>
+    </section>
+
+    <section id="hourly-section" class="card" hidden>
+      <h3>Next 24 hours</h3>
+      <div id="hourly" class="hourly"></div>
+    </section>
+
+    <section id="daily-section" class="card" hidden>
+      <h3>7-day forecast</h3>
+      <ul id="daily" class="daily"></ul>
+    </section>
+  </main>
+
+  <footer class="footer muted small">
+    Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

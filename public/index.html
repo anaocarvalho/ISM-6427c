@@ -4,26 +4,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Plateful · AI Calorie Tracker</title>
-  <meta name="description" content="Log meals in plain English. AI counts the calories, protein, carbs and fat. Track intake vs. burn, 7-day trends and streaks." />
+  <meta name="description" content="Log meals in plain English or Portuguese. AI counts the calories, protein, carbs and fat. Track intake vs. burn, recipes, 7-day trends and streaks." />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <!-- iPhone home-screen app -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Plateful" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
   <script>
-    // Apply the saved theme before first paint to avoid a flash.
+    // Apply the saved theme and language before first paint to avoid a flash.
     (function () {
       try {
         var t = localStorage.getItem("plateful.theme");
         if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        var s = JSON.parse(localStorage.getItem("plateful.v1") || "{}");
+        var l = (s.profile && s.profile.lang) || ((navigator.language || "").toLowerCase().indexOf("pt") === 0 ? "pt" : "en");
+        document.documentElement.lang = l === "pt" ? "pt-BR" : "en";
       } catch (e) {}
     })();
   </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
 
   <header class="topbar">
     <div class="topbar-inner">
@@ -32,17 +43,23 @@
         <span class="brand-name">Plateful</span>
       </div>
 
-      <nav class="tabs tabs-top" aria-label="Sections">
-        <button type="button" class="tab" data-tab="today" aria-current="page"><span aria-hidden="true">📅</span> Today</button>
-        <button type="button" class="tab" data-tab="trends"><span aria-hidden="true">📊</span> Trends</button>
-        <button type="button" class="tab" data-tab="badges"><span aria-hidden="true">🏆</span> Badges</button>
-        <button type="button" class="tab" data-tab="settings"><span aria-hidden="true">⚙️</span> Settings</button>
+      <nav class="tabs tabs-top" data-i18n-aria="nav.sections" aria-label="Sections">
+        <button type="button" class="tab" data-tab="today" aria-current="page"><span aria-hidden="true">📅</span> <span data-i18n="tab.today">Today</span></button>
+        <button type="button" class="tab" data-tab="trends"><span aria-hidden="true">📊</span> <span data-i18n="tab.trends">Trends</span></button>
+        <button type="button" class="tab" data-tab="recipes"><span aria-hidden="true">🍲</span> <span data-i18n="tab.recipes">Recipes</span></button>
+        <button type="button" class="tab" data-tab="badges"><span aria-hidden="true">🏆</span> <span data-i18n="tab.badges">Badges</span></button>
+        <button type="button" class="tab" data-tab="settings"><span aria-hidden="true">⚙️</span> <span data-i18n="tab.settings">Settings</span></button>
       </nav>
 
-      <div class="theme-switch" role="radiogroup" aria-label="Theme">
-        <button type="button" role="radio" data-theme-choice="light" aria-label="Light theme" title="Light">☀️</button>
-        <button type="button" role="radio" data-theme-choice="dark" aria-label="Dark theme" title="Dark">🌙</button>
-        <button type="button" role="radio" data-theme-choice="system" aria-label="System theme" title="System">🖥️</button>
+      <div class="top-controls">
+        <button type="button" class="lang-toggle" id="lang-toggle" data-i18n-aria="lang.switchTo" data-i18n-title="lang.switchTo" aria-label="Mudar para português" title="Mudar para português">
+          <span data-lang-opt="en">EN</span><span data-lang-opt="pt">PT</span>
+        </button>
+        <div class="theme-switch" role="radiogroup" data-i18n-aria="theme.group" aria-label="Theme">
+          <button type="button" role="radio" data-theme-choice="light" data-i18n-aria="theme.light" data-i18n-title="theme.light" aria-label="Light theme" title="Light">☀️</button>
+          <button type="button" role="radio" data-theme-choice="dark" data-i18n-aria="theme.dark" data-i18n-title="theme.dark" aria-label="Dark theme" title="Dark">🌙</button>
+          <button type="button" role="radio" data-theme-choice="system" data-i18n-aria="theme.system" data-i18n-title="theme.system" aria-label="System theme" title="System">🖥️</button>
+        </div>
       </div>
     </div>
   </header>
@@ -50,63 +67,77 @@
   <main id="main" class="container">
     <!-- ============ TODAY ============ -->
     <section id="view-today" class="view" data-view="today">
-      <div class="hello">
-        <div>
-          <h1 id="greeting">Hello, Ana Cecília! 👋</h1>
-          <p id="greeting-sub" class="muted">What's on your plate today?</p>
+      <div class="hero" id="hero">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-top">
+          <div class="hero-text">
+            <p class="hero-kicker" id="hero-kicker">Plateful</p>
+            <h1 id="greeting">Hello, Ana Cecília! 👋</h1>
+            <p id="greeting-sub">What's on your plate today?</p>
+          </div>
+          <button type="button" id="streak-chip" class="streak-chip" data-i18n-title="streak.title" title="Days in a row with at least one meal logged">
+            <span class="flame" aria-hidden="true">🔥</span> <span id="streak-text">0-day streak</span>
+          </button>
         </div>
-        <button type="button" id="streak-chip" class="streak-chip" title="Days in a row with at least one meal logged">
-          <span aria-hidden="true">🔥</span> <span id="streak-count">0</span>-day streak
-        </button>
-      </div>
-
-      <div class="date-nav card">
-        <button type="button" class="icon-btn" id="day-prev" aria-label="Previous day">‹</button>
-        <div class="date-label">
-          <strong id="day-label">Today</strong>
-          <span id="day-sub" class="muted small"></span>
+        <div class="hero-stats">
+          <div><span class="hs-label" data-i18n="hs.eaten">Eaten</span><span class="hs-value" id="hs-eaten">0</span></div>
+          <div><span class="hs-label" id="hs-left-label">Left</span><span class="hs-value" id="hs-left">0</span></div>
+          <div><span class="hs-label" data-i18n="hs.burned">Burned</span><span class="hs-value" id="hs-burned">—</span></div>
         </div>
-        <button type="button" class="icon-btn" id="day-next" aria-label="Next day">›</button>
-        <button type="button" class="link-btn" id="day-today" hidden>Jump to today</button>
+        <div class="date-nav">
+          <button type="button" class="icon-btn" id="day-prev" data-i18n-aria="day.prev" aria-label="Previous day">‹</button>
+          <div class="date-label">
+            <strong id="day-label">Today</strong>
+            <span id="day-sub" class="small"></span>
+          </div>
+          <button type="button" class="icon-btn" id="day-next" data-i18n-aria="day.next" aria-label="Next day">›</button>
+          <button type="button" class="link-btn" id="day-today" data-i18n="day.jump" hidden>Jump to today</button>
+        </div>
       </div>
 
       <div class="grid-today">
         <!-- Summary -->
         <section class="card summary" aria-labelledby="summary-title">
-          <h2 id="summary-title" class="card-title">Daily summary</h2>
+          <h2 id="summary-title" class="card-title" data-i18n="sum.title">Daily summary</h2>
           <div class="summary-body">
             <div class="ring-wrap">
               <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ring-label">
-                <title id="ring-label">Calories eaten versus goal</title>
+                <title id="ring-label" data-i18n="sum.ring">Calories eaten versus goal</title>
+                <defs>
+                  <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="var(--grad-a)" />
+                    <stop offset="100%" stop-color="var(--grad-b)" />
+                  </linearGradient>
+                </defs>
                 <circle class="ring-track" cx="60" cy="60" r="52" />
                 <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="0 100" />
               </svg>
               <div class="ring-center">
                 <span class="ring-big" id="ring-eaten">0</span>
-                <span class="ring-small muted">of <span id="ring-goal">2,000</span> kcal</span>
+                <span class="ring-small muted"><span data-i18n="sum.of">of</span> <span id="ring-goal">2,000</span> kcal</span>
                 <span class="ring-left" id="ring-left">2,000 left</span>
               </div>
             </div>
 
             <div class="summary-stats">
-              <div class="stat-row"><span class="dot dot-intake" aria-hidden="true"></span><span>Eaten</span><strong id="sum-eaten">0</strong></div>
-              <div class="stat-row"><span class="dot dot-burned" aria-hidden="true"></span><span>Burned</span><strong id="sum-burned">—</strong></div>
-              <div class="stat-row"><span class="dot dot-net" aria-hidden="true"></span><span>Net</span><strong id="sum-net">—</strong></div>
+              <div class="stat-row"><span class="dot dot-intake" aria-hidden="true"></span><span data-i18n="sum.eaten">Eaten</span><strong id="sum-eaten">0</strong></div>
+              <div class="stat-row"><span class="dot dot-burned" aria-hidden="true"></span><span data-i18n="sum.burned">Burned</span><strong id="sum-burned">—</strong></div>
+              <div class="stat-row"><span class="dot dot-net" aria-hidden="true"></span><span data-i18n="sum.net">Net</span><strong id="sum-net">—</strong></div>
               <div id="balance-pill" class="balance-pill neutral">Log calories burned to see your balance</div>
             </div>
           </div>
 
           <div class="macros" id="macros">
             <div class="macro" data-macro="protein">
-              <div class="macro-head"><span>Protein</span><span class="muted small" id="m-protein">0 g</span></div>
+              <div class="macro-head"><span data-i18n="macro.protein">Protein</span><span class="muted small" id="m-protein">0 g</span></div>
               <div class="bar"><span class="bar-fill macro-p" id="mb-protein"></span></div>
             </div>
             <div class="macro" data-macro="carbs">
-              <div class="macro-head"><span>Carbs</span><span class="muted small" id="m-carbs">0 g</span></div>
+              <div class="macro-head"><span data-i18n="macro.carbs">Carbs</span><span class="muted small" id="m-carbs">0 g</span></div>
               <div class="bar"><span class="bar-fill macro-c" id="mb-carbs"></span></div>
             </div>
             <div class="macro" data-macro="fat">
-              <div class="macro-head"><span>Fat</span><span class="muted small" id="m-fat">0 g</span></div>
+              <div class="macro-head"><span data-i18n="macro.fat">Fat</span><span class="muted small" id="m-fat">0 g</span></div>
               <div class="bar"><span class="bar-fill macro-f" id="mb-fat"></span></div>
             </div>
           </div>
@@ -114,96 +145,96 @@
 
         <!-- Log a meal -->
         <section class="card composer" aria-labelledby="composer-title">
-          <h2 id="composer-title" class="card-title">Log a meal</h2>
+          <h2 id="composer-title" class="card-title" data-i18n="comp.title">Log a meal</h2>
 
-          <div class="chips meal-types" role="radiogroup" aria-label="Meal type">
-            <button type="button" role="radio" class="chip" data-meal="breakfast">🌅 Breakfast</button>
-            <button type="button" role="radio" class="chip" data-meal="lunch">🥪 Lunch</button>
-            <button type="button" role="radio" class="chip" data-meal="dinner">🍝 Dinner</button>
-            <button type="button" role="radio" class="chip" data-meal="snack">🍎 Snack</button>
+          <div class="chips meal-types" role="radiogroup" data-i18n-aria="mealType" aria-label="Meal type">
+            <button type="button" role="radio" class="chip" data-meal="breakfast">🌅 <span data-i18n="meal.breakfast">Breakfast</span></button>
+            <button type="button" role="radio" class="chip" data-meal="lunch">🥪 <span data-i18n="meal.lunch">Lunch</span></button>
+            <button type="button" role="radio" class="chip" data-meal="dinner">🍝 <span data-i18n="meal.dinner">Dinner</span></button>
+            <button type="button" role="radio" class="chip" data-meal="snack">🍎 <span data-i18n="meal.snack">Snack</span></button>
           </div>
 
           <form id="meal-form" autocomplete="off">
-            <label for="meal-text" class="sr-only">Describe what you ate, with amounts</label>
-            <textarea id="meal-text" rows="3" maxlength="2000" placeholder="List everything, e.g. 2 scrambled eggs, 1 slice sourdough with butter, half an avocado, a large oat latte (one per line works too)"></textarea>
+            <label for="meal-text" class="sr-only" data-i18n="comp.label">Describe what you ate, with amounts</label>
+            <textarea id="meal-text" rows="3" maxlength="2000" data-i18n-ph="comp.placeholder" placeholder="List everything, e.g. 2 scrambled eggs, 1 slice sourdough with butter, half an avocado, a large oat latte (one per line works too)"></textarea>
             <div class="composer-foot">
               <span class="muted small" id="char-count">0 / 2000</span>
               <div class="composer-actions">
-                <button type="button" class="link-btn" id="manual-open">Enter manually</button>
-                <button type="submit" class="btn btn-primary" id="analyze-btn">✨ Analyze &amp; log</button>
+                <button type="button" class="link-btn" id="manual-open" data-i18n="comp.manual">Enter manually</button>
+                <button type="submit" class="btn btn-primary" id="analyze-btn" data-i18n="comp.analyze">✨ Analyze &amp; log</button>
               </div>
             </div>
           </form>
 
           <div class="examples">
-            <span class="muted small">Try:</span>
+            <span class="muted small" data-i18n="comp.try">Try:</span>
             <div class="chips" id="example-chips"></div>
           </div>
 
           <div class="memory" id="memory" hidden>
             <button type="button" class="repeat-btn" id="repeat-btn" hidden>
               <span class="repeat-icon" aria-hidden="true">↺</span>
-              <span class="repeat-text"><strong id="repeat-title">Same as yesterday</strong><span class="muted small" id="repeat-sub"></span></span>
+              <span class="repeat-text"><strong id="repeat-title"></strong><span class="muted small" id="repeat-sub"></span></span>
               <span class="pill" id="repeat-kcal"></span>
             </button>
             <div class="quick" id="quick-wrap" hidden>
-              <span class="muted small">⚡ One-tap re-log (no typing, no AI wait):</span>
+              <span class="muted small" data-i18n="comp.quick">⚡ One-tap re-log (no typing, no AI wait):</span>
               <div class="chips" id="quick-chips"></div>
             </div>
           </div>
 
           <div id="analyzing" class="analyzing" hidden aria-live="polite">
             <div class="spinner" aria-hidden="true"></div>
-            <span id="analyzing-msg">Counting calories…</span>
+            <span id="analyzing-msg"></span>
           </div>
 
           <div id="composer-error" class="error" role="alert" hidden></div>
 
           <div id="preview" class="preview" hidden aria-live="polite">
             <div class="preview-head">
-              <h3 id="preview-title">✓ Logged</h3>
+              <h3 id="preview-title"></h3>
               <span class="pill" id="preview-total">0 kcal</span>
             </div>
             <ul class="items" id="preview-items"></ul>
             <p class="note" id="preview-note" hidden></p>
             <div class="preview-actions">
-              <button type="button" class="link-btn" id="preview-reanalyze" hidden>↻ Re-analyze</button>
-              <button type="button" class="btn" id="preview-undo">Undo</button>
-              <button type="button" class="btn btn-primary" id="preview-done">Done</button>
+              <button type="button" class="link-btn" id="preview-reanalyze" data-i18n="prev.reanalyze" hidden>↻ Re-analyze</button>
+              <button type="button" class="btn" id="preview-undo" data-i18n="prev.undo">Undo</button>
+              <button type="button" class="btn btn-primary" id="preview-done" data-i18n="prev.done">Done</button>
             </div>
           </div>
         </section>
 
         <!-- Burned -->
         <section class="card burned" aria-labelledby="burned-title">
-          <h2 id="burned-title" class="card-title">Calories burned</h2>
-          <p class="muted small">Your total for the day (resting + active), e.g. from your watch or fitness app.</p>
+          <h2 id="burned-title" class="card-title" data-i18n="burn.title">Calories burned</h2>
+          <p class="muted small" data-i18n="burn.desc">Your total for the day (resting + active), e.g. from your watch or fitness app.</p>
           <form id="burned-form" class="burned-form">
-            <label for="burned-input" class="sr-only">Calories burned</label>
-            <input id="burned-input" type="number" inputmode="numeric" min="0" max="10000" step="1" placeholder="e.g. 2300" />
+            <label for="burned-input" class="sr-only" data-i18n="burn.label">Calories burned</label>
+            <input id="burned-input" type="number" inputmode="numeric" min="0" max="10000" step="1" data-i18n-ph="burn.placeholder" placeholder="e.g. 2300" />
             <span class="unit">kcal</span>
-            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" class="btn btn-primary" data-i18n="burn.save">Save</button>
           </form>
           <div class="chips burned-chips">
             <button type="button" class="chip" data-burn-add="100">+100</button>
             <button type="button" class="chip" data-burn-add="250">+250</button>
             <button type="button" class="chip" data-burn-add="500">+500</button>
-            <button type="button" class="chip" id="burn-copy">↺ Same as yesterday</button>
-            <button type="button" class="chip" id="burn-clear">Clear</button>
+            <button type="button" class="chip" id="burn-copy"></button>
+            <button type="button" class="chip" id="burn-clear" data-i18n="burn.clear">Clear</button>
           </div>
         </section>
 
         <!-- Meals -->
         <section class="card meals" aria-labelledby="meals-title">
           <div class="card-title-row">
-            <h2 id="meals-title" class="card-title">Meals</h2>
+            <h2 id="meals-title" class="card-title" data-i18n="meals.title">Meals</h2>
             <span class="muted small" id="meals-count"></span>
           </div>
           <div id="meal-list"></div>
           <div id="meals-empty" class="empty">
             <div class="empty-emoji" aria-hidden="true">🥗</div>
-            <p><strong>Nothing logged yet.</strong></p>
-            <p class="muted small">Describe a meal above, like "a turkey sandwich and an apple", and the AI does the math.</p>
+            <p><strong data-i18n="meals.emptyTitle">Nothing logged yet.</strong></p>
+            <p class="muted small" data-i18n="meals.emptyDesc">Describe a meal above and the AI does the math.</p>
           </div>
         </section>
       </div>
@@ -213,27 +244,27 @@
     <section id="view-trends" class="view" data-view="trends" hidden>
       <div class="hello">
         <div>
-          <h1>Your last 7 days</h1>
+          <h1 data-i18n="tr.title">Your last 7 days</h1>
           <p class="muted" id="trend-range"></p>
         </div>
       </div>
 
       <div class="tiles">
-        <div class="tile"><span class="tile-label">Avg intake</span><span class="tile-value" id="t-intake">—</span><span class="tile-sub muted" id="t-intake-sub"></span></div>
-        <div class="tile"><span class="tile-label">Avg burned</span><span class="tile-value" id="t-burned">—</span><span class="tile-sub muted" id="t-burned-sub"></span></div>
-        <div class="tile tile-balance" id="t-balance-tile"><span class="tile-label">Avg daily balance</span><span class="tile-value" id="t-balance">—</span><span class="tile-sub" id="t-balance-sub"></span></div>
-        <div class="tile"><span class="tile-label">Projected weekly change</span><span class="tile-value" id="t-weight">—</span><span class="tile-sub muted">at this pace</span></div>
+        <div class="tile"><span class="tile-label" data-i18n="tr.avgIntake">Avg intake</span><span class="tile-value" id="t-intake">—</span><span class="tile-sub muted" id="t-intake-sub"></span></div>
+        <div class="tile"><span class="tile-label" data-i18n="tr.avgBurned">Avg burned</span><span class="tile-value" id="t-burned">—</span><span class="tile-sub muted" id="t-burned-sub"></span></div>
+        <div class="tile tile-balance" id="t-balance-tile"><span class="tile-label" data-i18n="tr.balance">Avg daily balance</span><span class="tile-value" id="t-balance">—</span><span class="tile-sub" id="t-balance-sub"></span></div>
+        <div class="tile"><span class="tile-label" data-i18n="tr.weekly">Projected weekly change</span><span class="tile-value" id="t-weight">—</span><span class="tile-sub muted" data-i18n="tr.pace">at this pace</span></div>
       </div>
 
       <section class="card chart-card" aria-labelledby="chart-title">
         <div class="card-title-row">
-          <h2 id="chart-title" class="card-title">Intake vs. burned</h2>
-          <button type="button" class="link-btn" id="chart-table-toggle" aria-pressed="false">Show table</button>
+          <h2 id="chart-title" class="card-title" data-i18n="tr.chart">Intake vs. burned</h2>
+          <button type="button" class="link-btn" id="chart-table-toggle" aria-pressed="false" data-i18n="tr.showTable">Show table</button>
         </div>
         <div class="legend" aria-hidden="true">
-          <span><i class="sw sw-intake"></i>Intake</span>
-          <span><i class="sw sw-burned"></i>Burned</span>
-          <span><i class="sw sw-goal"></i>Intake goal</span>
+          <span><i class="sw sw-intake"></i><span data-i18n="tr.intake">Intake</span></span>
+          <span><i class="sw sw-burned"></i><span data-i18n="tr.burned">Burned</span></span>
+          <span><i class="sw sw-goal"></i><span data-i18n="tr.goal">Intake goal</span></span>
         </div>
         <div class="chart" id="chart"></div>
         <div class="chart-tooltip" id="chart-tooltip" role="status" hidden></div>
@@ -242,21 +273,79 @@
 
       <div class="grid-2">
         <section class="card" aria-labelledby="macro-week-title">
-          <h2 id="macro-week-title" class="card-title">Average macros</h2>
-          <div class="stack-bar" id="macro-stack" role="img" aria-label="Average share of calories by macro"></div>
+          <h2 id="macro-week-title" class="card-title" data-i18n="tr.macros">Average macros</h2>
+          <div class="stack-bar" id="macro-stack" role="img" data-i18n-aria="tr.macroAria" aria-label="Average share of calories by macro"></div>
           <div class="macro-legend" id="macro-legend"></div>
         </section>
         <section class="card" aria-labelledby="insights-title">
-          <h2 id="insights-title" class="card-title">Insights</h2>
+          <h2 id="insights-title" class="card-title" data-i18n="tr.insights">Insights</h2>
           <ul class="insights" id="insights"></ul>
         </section>
       </div>
 
       <div id="trends-empty" class="card empty" hidden>
         <div class="empty-emoji" aria-hidden="true">📈</div>
-        <p><strong>Your trends will show up here.</strong></p>
-        <p class="muted small">Log a few meals and your calories burned, or explore with a sample week.</p>
-        <button type="button" class="btn" data-action="sample">Load a sample week</button>
+        <p><strong data-i18n="tr.emptyTitle">Your trends will show up here.</strong></p>
+        <p class="muted small" data-i18n="tr.emptyDesc">Log a few meals and your calories burned, or explore with a sample week.</p>
+        <button type="button" class="btn" data-action="sample" data-i18n="tr.sample">Load a sample week</button>
+      </div>
+    </section>
+
+    <!-- ============ RECIPES ============ -->
+    <section id="view-recipes" class="view" data-view="recipes" hidden>
+      <div class="hello">
+        <div>
+          <h1 data-i18n="rec.title">Recipes</h1>
+          <p class="muted" data-i18n="rec.sub">Cooked something? Save the recipe once, then log any slice or serving with exact numbers.</p>
+        </div>
+      </div>
+
+      <div class="grid-recipes">
+        <section class="card recipe-new" aria-labelledby="recipe-new-title">
+          <h2 id="recipe-new-title" class="card-title" data-i18n="rec.add">✨ Add a recipe</h2>
+          <form id="recipe-form" autocomplete="off">
+            <label for="recipe-text" class="field-label" data-i18n="rec.field">Paste the recipe: title, ingredients with amounts, and how many it makes</label>
+            <textarea id="recipe-text" rows="8" maxlength="5000" data-i18n-ph="rec.placeholder"></textarea>
+            <div class="composer-foot">
+              <button type="button" class="link-btn" id="recipe-example" data-i18n="rec.example">Use banana bread example</button>
+              <button type="submit" class="btn btn-primary" id="recipe-analyze-btn" data-i18n="rec.analyze">✨ Analyze recipe</button>
+            </div>
+          </form>
+          <div id="recipe-analyzing" class="analyzing" hidden aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <span data-i18n="rec.analyzing">Weighing every ingredient…</span>
+          </div>
+          <div id="recipe-error" class="error" role="alert" hidden></div>
+
+          <div id="recipe-draft" class="preview" hidden>
+            <div class="draft-head">
+              <input id="rd-emoji" class="emoji-input" type="text" maxlength="4" data-i18n-aria="rec.emoji" aria-label="Recipe emoji" />
+              <input id="rd-name" type="text" maxlength="60" data-i18n-aria="rec.name" aria-label="Recipe name" />
+            </div>
+            <div class="draft-yield">
+              <label><span data-i18n="rec.makes">Makes</span> <input id="rd-servings" type="number" min="1" max="500" step="1" inputmode="numeric" /></label>
+              <label><span class="sr-only" data-i18n="rec.portionName">Portion name</span><input id="rd-label" type="text" maxlength="20" list="label-options" /></label>
+              <datalist id="label-options"></datalist>
+            </div>
+            <div class="draft-totals" id="rd-totals"></div>
+            <details class="draft-ingredients"><summary id="rd-count"></summary><ul class="items" id="rd-items"></ul></details>
+            <p class="note" id="rd-note" hidden></p>
+            <div class="preview-actions">
+              <button type="button" class="btn" id="rd-cancel" data-i18n="rec.discard">Discard</button>
+              <button type="button" class="btn btn-primary" id="rd-save" data-i18n="rec.save">Save recipe</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="recipe-list-wrap" aria-labelledby="recipe-list-title">
+          <h2 id="recipe-list-title" class="sr-only" data-i18n="rec.title">Recipes</h2>
+          <div id="recipe-list" class="recipe-list"></div>
+          <div id="recipes-empty" class="card empty">
+            <div class="empty-emoji" aria-hidden="true">🍌🍞</div>
+            <p><strong data-i18n="rec.emptyTitle">No recipes yet.</strong></p>
+            <p class="muted small" data-i18n="rec.emptyDesc"></p>
+          </div>
+        </section>
       </div>
     </section>
 
@@ -264,8 +353,8 @@
     <section id="view-badges" class="view" data-view="badges" hidden>
       <div class="hello">
         <div>
-          <h1>Badges</h1>
-          <p class="muted" id="badge-progress">0 of 0 unlocked</p>
+          <h1 data-i18n="bd.title">Badges</h1>
+          <p class="muted" id="badge-progress"></p>
         </div>
       </div>
       <div class="badges" id="badge-grid"></div>
@@ -273,54 +362,76 @@
 
     <!-- ============ SETTINGS ============ -->
     <section id="view-settings" class="view" data-view="settings" hidden>
-      <div class="hello"><div><h1>Settings</h1><p class="muted">Make Plateful yours.</p></div></div>
+      <div class="hello"><div><h1 data-i18n="set.title">Settings</h1><p class="muted" data-i18n="set.sub">Make Plateful yours.</p></div></div>
 
       <div class="grid-2">
         <form class="card settings-form" id="settings-form">
-          <h2 class="card-title">Profile &amp; goals</h2>
-          <label>Name <input id="s-name" type="text" maxlength="40" placeholder="Your first name" /></label>
-          <label>Daily calorie goal (kcal) <input id="s-goal" type="number" min="800" max="6000" step="10" inputmode="numeric" /></label>
-          <label>Daily protein goal (g) <input id="s-protein" type="number" min="0" max="400" step="1" inputmode="numeric" /></label>
+          <h2 class="card-title" data-i18n="set.profile">Profile &amp; goals</h2>
           <fieldset class="units">
-            <legend>Weight units</legend>
-            <label class="inline"><input type="radio" name="units" value="lb" /> Pounds</label>
-            <label class="inline"><input type="radio" name="units" value="kg" /> Kilograms</label>
+            <legend data-i18n="set.language">Language</legend>
+            <label class="inline"><input type="radio" name="lang" value="en" /> English</label>
+            <label class="inline"><input type="radio" name="lang" value="pt" /> Português (Brasil)</label>
           </fieldset>
-          <button type="submit" class="btn btn-primary">Save settings</button>
+          <label><span data-i18n="set.name">Name</span> <input id="s-name" type="text" maxlength="40" data-i18n-ph="set.namePh" /></label>
+          <label><span data-i18n="set.goal">Daily calorie goal (kcal)</span> <input id="s-goal" type="number" min="800" max="6000" step="10" inputmode="numeric" /></label>
+          <label><span data-i18n="set.protein">Daily protein goal (g)</span> <input id="s-protein" type="number" min="0" max="400" step="1" inputmode="numeric" /></label>
+          <fieldset class="units">
+            <legend data-i18n="set.units">Weight units</legend>
+            <label class="inline"><input type="radio" name="units" value="lb" /> <span data-i18n="set.lb">Pounds</span></label>
+            <label class="inline"><input type="radio" name="units" value="kg" /> <span data-i18n="set.kg">Kilograms</span></label>
+          </fieldset>
+          <button type="submit" class="btn btn-primary" data-i18n="set.save">Save settings</button>
         </form>
 
         <section class="card">
-          <h2 class="card-title">Your data</h2>
-          <p class="muted small">Your log lives only in this browser. Meal descriptions are sent to the AI for analysis and aren't stored on a server. Export a backup to move it to another device.</p>
+          <h2 class="card-title" data-i18n="set.data">Your data</h2>
+          <p class="muted small" data-i18n="set.dataDesc"></p>
           <div class="stack">
-            <button type="button" class="btn" id="export-btn">⬇️ Export backup (JSON)</button>
-            <label class="btn file-btn">⬆️ Import backup<input type="file" id="import-input" accept="application/json,.json" hidden /></label>
-            <button type="button" class="btn" id="test-ai-btn">🩺 Test AI connection</button>
+            <button type="button" class="btn" id="export-btn" data-i18n="set.export">⬇️ Export backup (JSON)</button>
+            <label class="btn file-btn"><span data-i18n="set.import">⬆️ Import backup</span><input type="file" id="import-input" accept="application/json,.json" hidden /></label>
+            <button type="button" class="btn" id="test-ai-btn" data-i18n="set.test">🩺 Test AI connection</button>
             <p class="muted small" id="test-ai-result" role="status" hidden></p>
-            <button type="button" class="btn" data-action="sample">🧪 Load a sample week</button>
-            <button type="button" class="btn btn-danger" id="reset-btn">🗑️ Erase all data</button>
+            <button type="button" class="btn" data-action="sample" data-i18n="set.sample">🧪 Load a sample week</button>
+            <button type="button" class="btn btn-danger" id="reset-btn" data-i18n="set.erase">🗑️ Erase all data</button>
           </div>
-          <p class="muted small disclaimer">Estimates come from AI and may be off. Plateful isn't medical advice.</p>
+          <p class="muted small disclaimer" data-i18n="set.disclaimer"></p>
+        </section>
+
+        <section class="card install-card" id="install-card">
+          <h2 class="card-title" data-i18n="inst.title">📱 Put Plateful on your iPhone</h2>
+          <ol class="install-steps">
+            <li data-i18n-html="inst.s1"></li>
+            <li data-i18n-html="inst.s2"></li>
+            <li data-i18n-html="inst.s3"></li>
+            <li data-i18n-html="inst.s4"></li>
+          </ol>
+          <p class="muted small" data-i18n-html="inst.android"></p>
+          <button type="button" class="btn" id="install-btn" data-i18n="inst.btn" hidden>⬇️ Install app</button>
         </section>
       </div>
     </section>
   </main>
 
-  <nav class="tabs tabs-bottom" aria-label="Sections">
-    <button type="button" class="tab" data-tab="today" aria-current="page"><span aria-hidden="true">📅</span><span>Today</span></button>
-    <button type="button" class="tab" data-tab="trends"><span aria-hidden="true">📊</span><span>Trends</span></button>
-    <button type="button" class="tab" data-tab="badges"><span aria-hidden="true">🏆</span><span>Badges</span></button>
-    <button type="button" class="tab" data-tab="settings"><span aria-hidden="true">⚙️</span><span>Settings</span></button>
+  <nav class="tabs tabs-bottom" data-i18n-aria="nav.sections" aria-label="Sections">
+    <button type="button" class="tab" data-tab="today" aria-current="page"><span aria-hidden="true">📅</span><span data-i18n="tab.today">Today</span></button>
+    <button type="button" class="tab" data-tab="trends"><span aria-hidden="true">📊</span><span data-i18n="tab.trends">Trends</span></button>
+    <button type="button" class="tab" data-tab="recipes"><span aria-hidden="true">🍲</span><span data-i18n="tab.recipes">Recipes</span></button>
+    <button type="button" class="tab" data-tab="badges"><span aria-hidden="true">🏆</span><span data-i18n="tab.badges">Badges</span></button>
+    <button type="button" class="tab" data-tab="settings"><span aria-hidden="true">⚙️</span><span data-i18n="tab.settings">Settings</span></button>
   </nav>
 
   <!-- Onboarding -->
   <dialog id="onboarding" class="dialog" aria-labelledby="ob-title">
     <form method="dialog" id="onboarding-form">
+      <div class="chips ob-lang" role="radiogroup" data-i18n-aria="lang.group" aria-label="Language">
+        <button type="button" role="radio" class="chip" data-ob-lang="en">🇺🇸 English</button>
+        <button type="button" role="radio" class="chip" data-ob-lang="pt">🇧🇷 Português</button>
+      </div>
       <div class="ob-hero" aria-hidden="true">🍽️</div>
-      <h2 id="ob-title">Welcome, Ana Cecília! 👋</h2>
-      <p class="muted">Type what you ate like you'd text a friend. AI counts the calories and macros. Add what you burned and see if you're in a deficit or surplus.</p>
-      <label>What should we call you?<input id="ob-name" type="text" maxlength="40" placeholder="First name" /></label>
-      <label>Daily calorie goal
+      <h2 id="ob-title">Welcome!</h2>
+      <p class="muted" data-i18n="ob.desc"></p>
+      <label><span data-i18n="ob.name">What should we call you?</span><input id="ob-name" type="text" maxlength="40" data-i18n-ph="ob.namePh" /></label>
+      <label><span data-i18n="ob.goal">Daily calorie goal</span>
         <div class="chips" id="ob-goal-chips">
           <button type="button" class="chip" data-goal="1600">1,600</button>
           <button type="button" class="chip" data-goal="1800">1,800</button>
@@ -330,8 +441,8 @@
         <input id="ob-goal" type="number" min="800" max="6000" step="10" value="2000" inputmode="numeric" />
       </label>
       <div class="ob-actions">
-        <button type="button" class="btn" id="ob-sample">Explore with sample data</button>
-        <button type="submit" class="btn btn-primary" id="ob-start">Let's go →</button>
+        <button type="button" class="btn" id="ob-sample" data-i18n="ob.sample">Explore with sample data</button>
+        <button type="submit" class="btn btn-primary" id="ob-start" data-i18n="ob.start">Let's go →</button>
       </div>
     </form>
   </dialog>
@@ -339,24 +450,67 @@
   <!-- Manual entry -->
   <dialog id="manual" class="dialog" aria-labelledby="manual-title">
     <form method="dialog" id="manual-form">
-      <h2 id="manual-title">Add food manually</h2>
-      <label>Food <input id="mf-name" type="text" maxlength="80" required placeholder="e.g. Protein bar" /></label>
+      <h2 id="manual-title" data-i18n="man.title">Add food manually</h2>
+      <label><span data-i18n="man.food">Food</span> <input id="mf-name" type="text" maxlength="80" required data-i18n-ph="man.foodPh" /></label>
       <div class="grid-4">
-        <label>kcal <input id="mf-cal" type="number" min="0" max="5000" required inputmode="numeric" /></label>
-        <label>Protein g <input id="mf-p" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
-        <label>Carbs g <input id="mf-c" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
-        <label>Fat g <input id="mf-f" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
+        <label><span data-i18n="man.kcal">kcal</span> <input id="mf-cal" type="number" min="0" max="5000" required inputmode="numeric" /></label>
+        <label><span data-i18n="man.p">Protein g</span> <input id="mf-p" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
+        <label><span data-i18n="man.c">Carbs g</span> <input id="mf-c" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
+        <label><span data-i18n="man.f">Fat g</span> <input id="mf-f" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
       </div>
       <div class="ob-actions">
-        <button type="button" class="btn" id="manual-cancel">Cancel</button>
-        <button type="submit" class="btn btn-primary">Add to log</button>
+        <button type="button" class="btn" id="manual-cancel" data-i18n="man.cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" data-i18n="man.add">Add to log</button>
       </div>
     </form>
   </dialog>
 
+  <!-- Log a recipe portion -->
+  <dialog id="portion" class="dialog" aria-labelledby="portion-title">
+    <form method="dialog" id="portion-form">
+      <div class="portion-head">
+        <span class="portion-emoji" id="pt-emoji" aria-hidden="true">🍲</span>
+        <div><h2 id="portion-title"></h2><p class="muted small" id="pt-sub"></p></div>
+      </div>
+      <div class="chips" role="radiogroup" data-i18n-aria="portion.amountType" aria-label="Amount type">
+        <button type="button" role="radio" class="chip" data-pmode="servings" id="pt-mode-servings"></button>
+        <button type="button" role="radio" class="chip" data-pmode="fraction" data-i18n="portion.fraction">Fraction of the whole</button>
+      </div>
+      <div id="pt-servings-row" class="portion-row">
+        <button type="button" class="icon-btn" id="pt-minus" data-i18n-aria="portion.less" aria-label="Less">−</button>
+        <label class="portion-amount"><span class="sr-only" data-i18n="portion.amount">Amount</span><input id="pt-amount" type="number" min="0.25" step="0.25" inputmode="decimal" value="1" /></label>
+        <button type="button" class="icon-btn" id="pt-plus" data-i18n-aria="portion.more" aria-label="More">+</button>
+        <span class="portion-unit" id="pt-unit"></span>
+      </div>
+      <div id="pt-fraction-row" class="portion-row" hidden>
+        <label class="portion-amount wide"><span class="sr-only" data-i18n="portion.fractionLabel">Fraction of the whole recipe</span><input id="pt-fraction" type="text" inputmode="decimal" placeholder="1/16" /></label>
+        <span class="portion-unit" data-i18n="portion.ofWhole">of the whole recipe</span>
+      </div>
+      <div class="chips" id="pt-quick"></div>
+      <div class="portion-result" id="pt-result" aria-live="polite"></div>
+      <div class="chips meal-types" role="radiogroup" data-i18n-aria="mealType" aria-label="Meal type" id="pt-meals">
+        <button type="button" role="radio" class="chip" data-pmeal="breakfast">🌅 <span data-i18n="meal.breakfast">Breakfast</span></button>
+        <button type="button" role="radio" class="chip" data-pmeal="lunch">🥪 <span data-i18n="meal.lunch">Lunch</span></button>
+        <button type="button" role="radio" class="chip" data-pmeal="dinner">🍝 <span data-i18n="meal.dinner">Dinner</span></button>
+        <button type="button" role="radio" class="chip" data-pmeal="snack">🍎 <span data-i18n="meal.snack">Snack</span></button>
+      </div>
+      <div class="ob-actions">
+        <button type="button" class="btn" id="pt-cancel" data-i18n="portion.cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="pt-log" data-i18n="portion.log">Log it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="install-banner" id="install-banner" hidden>
+    <span class="install-icon" aria-hidden="true">📱</span>
+    <span data-i18n-html="inst.banner"></span>
+    <button type="button" class="icon-btn small-x" id="install-dismiss" data-i18n-aria="inst.dismiss" aria-label="Dismiss">×</button>
+  </div>
+
   <div class="toast-wrap" id="toasts" aria-live="polite"></div>
   <div class="confetti" id="confetti" aria-hidden="true"></div>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

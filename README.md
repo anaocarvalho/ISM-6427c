@@ -11,6 +11,9 @@ Type what you ate the way you'd text a friend ("2 scrambled eggs, toast with but
 - **Trends.** 7-day average intake, burned and balance, projected weekly weight change, an interactive intake-vs-burned bar chart with your goal line (with a table view), average macro split, and insights.
 - **Engagement.** A personal greeting (defaults to **Ana Cecília**), streaks, 12 unlockable badges with confetti, playful loading messages, and undo on every change.
 - **Getting started.** A welcome screen with a calorie goal picker, plus a **sample week** you can load to explore.
+- **Recipes.** Paste a recipe (e.g. banana bread that makes 16 slices). Claude totals every ingredient, and you can then log "1 slice", "1/16", "half" or any amount with exact math. Typing "1/16 of the banana bread" in the meal box works too, with no AI call.
+- **English & Português (Brasil).** Switch with the EN/PT toggle. The whole interface changes, and the AI writes food names, amounts and notes in the language you choose, whichever language you type in.
+- **iPhone app.** Open the site in Safari → Share → **Add to Home Screen**. It opens full-screen with its own icon (web app manifest, Apple touch icon, service worker).
 - **Light / Dark / System** themes. Your choice is remembered.
 - **Responsive** on phone (bottom tab bar), tablet and desktop. Installable to the home screen (web manifest).
 - **Your data.** Everything is stored in your browser (localStorage). You can export or import a JSON backup, or erase it all. A manual-entry fallback works without AI.
@@ -21,7 +24,9 @@ Type what you ate the way you'd text a friend ("2 scrambled eggs, toast with but
 | --- | --- |
 | `public/index.html` | App markup |
 | `public/styles.css` | Theme tokens (light/dark/system), responsive layout |
-| `public/app.js` | State, rendering, meal memory, chart, badges |
+| `public/app.js` | State, rendering, meal memory, recipes, chart, badges |
+| `public/i18n.js` | All interface text in English and Portuguese |
+| `public/sw.js`, `public/manifest.webmanifest`, `public/icons/` | Installable app: service worker, manifest, home-screen icons |
 | `public/weather/` | The earlier Boca Weather app, still available at `/weather/` |
 | `netlify/functions/analyze-meal.mjs` | Serverless function at `POST /api/analyze-meal` that calls Claude |
 | `netlify.toml` | Publish `public/`, functions directory, headers |

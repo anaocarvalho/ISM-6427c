@@ -1,12 +1,13 @@
 // Netlify Function: /api/analyze-meal
-//   POST {text}  → Claude breaks the meal into items and returns nutrition JSON.
+//   POST {text}                 → Claude breaks the meal into items and returns nutrition JSON.
+//   POST {text, mode: "recipe"} → Claude totals a whole recipe (per ingredient) and reads its yield.
 //   GET          → health check (is the API key configured? which model?).
 // The API key never leaves the server: set ANTHROPIC_API_KEY in
 // Netlify → Site configuration → Environment variables, then redeploy.
 import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
-const MAX_INPUT_CHARS = 2000;
+const MAX_INPUT_CHARS = { meal: 2000, recipe: 5000 };
 
 const SYSTEM_PROMPT = `You are a registered-dietitian-grade nutrition estimator inside a calorie tracking app.
 The user describes what they ate in plain text. It may be one food, a sentence, a comma-separated list, a bulleted or numbered list, or several lines. Often it is a whole meal with many foods.
@@ -63,6 +64,45 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
+const RECIPE_PROMPT = `You are a registered-dietitian-grade nutrition estimator inside a calorie tracking app.
+The user pastes a recipe they cooked: usually a title, an ingredient list with amounts, and maybe the yield and method. Estimate the nutrition of the WHOLE batch, ingredient by ingredient.
+
+Work in two steps:
+1. "ingredients_mentioned": every ingredient with an amount, in the order written, using the user's wording. Skip pure equipment and instructions.
+2. "items": one item per entry in ingredients_mentioned, same order, with the nutrition of the FULL amount used in the recipe (e.g. "3 ripe bananas" → all three bananas).
+
+Rules:
+- Respect the exact amounts and units (cups, tbsp, tsp, grams, oz, sticks of butter, "1 large egg"). Convert volumes to weights with standard densities (e.g. 1 cup all-purpose flour ≈ 125 g, 1 cup granulated sugar ≈ 200 g, 1 stick butter = 113 g).
+- Ingredients without an amount ("a pinch of salt", "oil for the pan") get a small realistic amount, stated in "quantity".
+- Zero- or near-zero-calorie ingredients (baking soda, salt, spices, water) are listed with their small or zero values.
+- Use standard references such as USDA FoodData Central. Round calories to whole numbers and macros to one decimal place.
+- "name": a short, friendly recipe name (from the title if given, otherwise inferred, e.g. "Banana bread").
+- "emoji": one emoji for the dish.
+- "servings": the number of portions the recipe says it makes ("makes 12 muffins", "serves 4", "cut into 16 slices"). Use 0 if it isn't stated.
+- "serving_label": the singular word for one portion ("slice", "muffin", "cookie", "serving", "bowl", "piece"); "serving" if unclear.
+- "notes": one short, friendly sentence (under 160 characters) with a key assumption.
+If the text is not a recipe or food, return empty arrays and explain in "notes".`;
+
+const RECIPE_SCHEMA = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    emoji: { type: "string" },
+    servings: { type: "number", description: "Portions the recipe makes; 0 if not stated" },
+    serving_label: { type: "string" },
+    ingredients_mentioned: { type: "array", items: { type: "string" } },
+    items: SCHEMA.properties.items,
+    notes: { type: "string" },
+  },
+  required: ["name", "emoji", "servings", "serving_label", "ingredients_mentioned", "items", "notes"],
+  additionalProperties: false,
+};
+
+const MODES = {
+  meal: { system: SYSTEM_PROMPT, schema: SCHEMA, listKey: "foods_mentioned", intro: "Here is everything I ate:", tag: "meal", noun: "foods" },
+  recipe: { system: RECIPE_PROMPT, schema: RECIPE_SCHEMA, listKey: "ingredients_mentioned", intro: "Here is the recipe I made:", tag: "recipe", noun: "ingredients" },
+};
+
 const client = new Anthropic();
 
 const json = (body, status = 200) =>
@@ -88,25 +128,88 @@ function splitEntries(text) {
     .filter((s) => s.length > 1);
 }
 
-function buildUserMessage(text, entries, retryNote) {
-  let msg = `Here is everything I ate:\n<meal>\n${text}\n</meal>`;
+// The user's saved recipes, so a meal like "a slice of my banana bread and a coffee"
+// uses their own numbers instead of a generic estimate.
+function recipeNotes(recipes) {
+  if (!Array.isArray(recipes) || !recipes.length) return "";
+  const lines = recipes.slice(0, 25).map((r) => {
+    const n = Math.max(1, Math.round(Number(r?.servings) || 1));
+    const t = r?.totals || {};
+    const per = (v) => Math.round(((Number(v) || 0) / n) * 10) / 10;
+    const label = String(r?.serving_label || "serving").slice(0, 20);
+    return `- ${String(r?.name || "Recipe").slice(0, 60)}: makes ${n} ${label}(s). One ${label} = ${per(t.calories)} kcal, ${per(t.protein_g)} g protein, ${per(t.carbs_g)} g carbs, ${per(t.fat_g)} g fat.`;
+  });
+  return `\n\nMy saved home recipes. If I mention one, use these exact numbers scaled to the amount I ate (e.g. 1/16 of a 16-slice recipe = 1 slice); otherwise ignore them:\n${lines.join("\n")}`;
+}
+
+function buildUserMessage(mode, text, entries, retryNote, recipes, lang = "en") {
+  const m = MODES[mode];
+  let msg = `${m.intro}\n<${m.tag}>\n${text}\n</${m.tag}>`;
   if (entries.length > 1) {
-    msg += `\n\nIt contains at least these ${entries.length} separate entries (an entry can hold more than one food). Make sure every one is covered:\n`;
+    msg += mode === "recipe"
+      ? `\n\nIt has these ${entries.length} lines (some may be a title, yield or instructions rather than ingredients). Make sure every ingredient is covered:\n`
+      : `\n\nIt contains at least these ${entries.length} separate entries (an entry can hold more than one food). Make sure every one is covered:\n`;
     msg += entries.map((e, i) => `${i + 1}. ${e}`).join("\n");
   }
+  if (mode === "meal") msg += recipeNotes(recipes);
+  msg += `\n\n${LANG_NOTE[lang]}`;
   if (retryNote) msg += `\n\n${retryNote}`;
   return msg;
 }
 
+// Reply language. Users may write in either language; the log should read in theirs.
+const LANG_NOTE = {
+  en: "Write every name, quantity, serving_label and notes value in English, even if my text is in another language.",
+  pt: "Escreva todos os valores de name, quantity, serving_label e notes em português do Brasil, mesmo que meu texto esteja em outro idioma. Use medidas caseiras brasileiras quando fizer sentido (colher de sopa, xícara, concha, fatia).",
+};
+
+// User-facing error messages.
+const ERR = {
+  en: {
+    noKey: "The server is missing its ANTHROPIC_API_KEY. Add it in Netlify → Site configuration → Environment variables, then redeploy.",
+    badJson: "Send JSON like {\"text\": \"2 eggs and toast\"}.",
+    emptyMeal: "Tell me what you ate first.",
+    emptyRecipe: "Paste your recipe first.",
+    tooLong: "That's a lot of text! Keep it under {n} characters.",
+    refusal: "I couldn't analyze that one. Try describing just the food.",
+    garbled: "The AI's answer came back garbled. Please try again.",
+    auth: "The server's Anthropic API key was rejected. Check ANTHROPIC_API_KEY in Netlify and redeploy.",
+    perm: "This API key can't use the model. Check your Anthropic account, or set ANTHROPIC_MODEL in Netlify.",
+    model: "Model \"{m}\" wasn't found for this API key. Set ANTHROPIC_MODEL in Netlify.",
+    rate: "Too many requests, or the account is out of credits. Try again in a moment.",
+    api: "The nutrition AI returned an error. Please try again.",
+    network: "Couldn't reach the nutrition AI. Please try again.",
+    noFood: "I couldn't find any food in that description.",
+    noIngredients: "I couldn't find any ingredients in that recipe.",
+  },
+  pt: {
+    noKey: "O servidor está sem a ANTHROPIC_API_KEY. Adicione em Netlify → Site configuration → Environment variables e publique de novo.",
+    badJson: "Envie JSON como {\"text\": \"2 ovos e torrada\"}.",
+    emptyMeal: "Primeiro me conte o que você comeu.",
+    emptyRecipe: "Primeiro cole a sua receita.",
+    tooLong: "É muito texto! Use menos de {n} caracteres.",
+    refusal: "Não consegui analisar isso. Tente descrever só a comida.",
+    garbled: "A resposta da IA veio com problema. Tente de novo.",
+    auth: "A chave da API da Anthropic foi recusada. Confira a ANTHROPIC_API_KEY na Netlify e publique de novo.",
+    perm: "Esta chave da API não pode usar o modelo. Confira sua conta da Anthropic ou defina ANTHROPIC_MODEL na Netlify.",
+    model: "O modelo \"{m}\" não foi encontrado para esta chave. Defina ANTHROPIC_MODEL na Netlify.",
+    rate: "Muitas solicitações, ou a conta está sem créditos. Tente de novo em instantes.",
+    api: "A IA de nutrição retornou um erro. Tente de novo.",
+    network: "Não foi possível acessar a IA de nutrição. Tente de novo.",
+    noFood: "Não encontrei nenhum alimento nessa descrição.",
+    noIngredients: "Não encontrei ingredientes nessa receita.",
+  },
+};
+
 let fallbackSupported = true;
 
-async function callClaude(userMessage) {
+async function callClaude(mode, userMessage) {
   const base = {
     model: MODEL,
     max_tokens: 16000,
-    system: SYSTEM_PROMPT,
+    system: MODES[mode].system,
     messages: [{ role: "user", content: userMessage }],
-    output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
+    output_config: { effort: "medium", format: { type: "json_schema", schema: MODES[mode].schema } },
   };
   if (fallbackSupported) {
     try {
@@ -141,68 +244,75 @@ export default async (req) => {
   }
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return json(
-      { error: "The server is missing its ANTHROPIC_API_KEY. Add it in Netlify → Site configuration → Environment variables, then redeploy." },
-      500,
-    );
-  }
-
   let text = "";
+  let mode = "meal";
+  let recipes = [];
+  let lang = "en";
+  let body = null;
+  try { body = await req.json(); } catch { /* handled below */ }
+  if (body?.lang === "pt") lang = "pt";
+  const E = ERR[lang];
+
+  if (!process.env.ANTHROPIC_API_KEY) return json({ error: E.noKey }, 500);
+
   try {
-    const body = await req.json();
+    if (!body || typeof body !== "object") throw new Error("bad body");
+    if (Array.isArray(body?.recipes)) recipes = body.recipes;
     text = String(body?.text ?? "").trim();
+    if (body?.mode === "recipe") mode = "recipe";
   } catch {
-    return json({ error: "Send JSON like {\"text\": \"2 eggs and toast\"}." }, 400);
+    return json({ error: E.badJson }, 400);
   }
-  if (!text) return json({ error: "Tell me what you ate first." }, 400);
-  if (text.length > MAX_INPUT_CHARS) {
-    return json({ error: `That's a feast! Keep it under ${MAX_INPUT_CHARS} characters.` }, 400);
+  if (!text) return json({ error: mode === "recipe" ? E.emptyRecipe : E.emptyMeal }, 400);
+  if (text.length > MAX_INPUT_CHARS[mode]) {
+    return json({ error: E.tooLong.replace("{n}", MAX_INPUT_CHARS[mode]) }, 400);
   }
 
   const entries = splitEntries(text);
+  const listKey = MODES[mode].listKey;
   let parsed;
   let model = MODEL;
   try {
-    let response = await callClaude(buildUserMessage(text, entries));
+    let response = await callClaude(mode, buildUserMessage(mode, text, entries, "", recipes, lang));
     let result = parseResponse(response);
     model = response.model;
 
-    // Retry once if the answer was unusable or clearly skipped foods.
+    // Retry once if the answer was unusable or clearly skipped foods. Recipe text
+    // includes titles and steps, so only the model's own ingredient list counts there.
     const tooFew = (r) => r.data && Array.isArray(r.data.items) &&
-      r.data.items.length < Math.max(entries.length, (r.data.foods_mentioned || []).length);
+      r.data.items.length < Math.max(mode === "meal" ? entries.length : 0, (r.data[listKey] || []).length);
     if (result.garbled || tooFew(result)) {
       const got = result.data?.items?.length ?? 0;
       const note = result.garbled
         ? "Your previous answer was not valid JSON. Answer again following the schema."
-        : `Your previous answer only had ${got} item(s), but the meal lists more foods. Include a separate item for every food and drink.`;
-      const retry = parseResponse(await callClaude(buildUserMessage(text, entries, note)));
+        : `Your previous answer only had ${got} item(s), but the text lists more ${MODES[mode].noun}. Include a separate item for every one.`;
+      const retry = parseResponse(await callClaude(mode, buildUserMessage(mode, text, entries, note, recipes, lang)));
       const better = retry.data && (!result.data || (retry.data.items?.length ?? 0) > got);
       if (better) result = retry;
     }
 
-    if (result.refusal) return json({ error: "I couldn't analyze that one. Try describing just the food." }, 422);
-    if (!result.data) return json({ error: "The AI's answer came back garbled. Please try again." }, 502);
+    if (result.refusal) return json({ error: E.refusal }, 422);
+    if (!result.data) return json({ error: E.garbled }, 502);
     parsed = result.data;
   } catch (error) {
     console.error("Claude API error:", error?.status, error?.message);
     const detail = error instanceof Anthropic.APIError ? `${error.status ?? ""} ${error.message}`.trim().slice(0, 300) : String(error?.message || error).slice(0, 300);
     if (error instanceof Anthropic.AuthenticationError) {
-      return json({ error: "The server's Anthropic API key was rejected. Check ANTHROPIC_API_KEY in Netlify and redeploy.", detail }, 502);
+      return json({ error: E.auth, detail }, 502);
     }
     if (error instanceof Anthropic.PermissionDeniedError) {
-      return json({ error: "This API key can't use the model. Check your Anthropic account, or set ANTHROPIC_MODEL in Netlify.", detail }, 502);
+      return json({ error: E.perm, detail }, 502);
     }
     if (error instanceof Anthropic.NotFoundError) {
-      return json({ error: `Model "${MODEL}" wasn't found for this API key. Set ANTHROPIC_MODEL in Netlify.`, detail }, 502);
+      return json({ error: E.model.replace("{m}", MODEL), detail }, 502);
     }
     if (error instanceof Anthropic.RateLimitError) {
-      return json({ error: "Too many requests, or the account is out of credits. Try again in a moment.", detail }, 429);
+      return json({ error: E.rate, detail }, 429);
     }
     if (error instanceof Anthropic.APIError) {
-      return json({ error: "The nutrition AI returned an error. Please try again.", detail }, 502);
+      return json({ error: E.api, detail }, 502);
     }
-    return json({ error: "Couldn't reach the nutrition AI. Please try again.", detail }, 502);
+    return json({ error: E.network, detail }, 502);
   }
 
   const items = (Array.isArray(parsed.items) ? parsed.items : []).map((it) => ({
@@ -217,7 +327,7 @@ export default async (req) => {
 
   const notes = String(parsed.notes || "").slice(0, 300);
   if (items.length === 0) {
-    return json({ error: notes || "I couldn't find any food in that description.", items: [] }, 422);
+    return json({ error: notes || (mode === "recipe" ? E.noIngredients : E.noFood), items: [] }, 422);
   }
 
   // Totals are summed here (not trusted from the model) so they always match the items.
@@ -229,6 +339,16 @@ export default async (req) => {
     fat_g: sum("fat_g", 1),
   };
 
+  if (mode === "recipe") {
+    const servings = Math.round(Number(parsed.servings) || 0);
+    return json({
+      name: String(parsed.name || (lang === "pt" ? "Minha receita" : "My recipe")).slice(0, 60),
+      emoji: String(parsed.emoji || "🍲").slice(0, 8),
+      servings: servings > 0 && servings <= 500 ? servings : 0,
+      serving_label: String(parsed.serving_label || (lang === "pt" ? "porção" : "serving")).toLowerCase().slice(0, 20),
+      items, totals, notes, model,
+    });
+  }
   return json({ items, totals, notes, model });
 };
 

@@ -1,7 +1,15 @@
-# Static site: no build step needed. Netlify serves the repo root as-is.
+# Plateful: static frontend in /public + one serverless function in /netlify/functions.
+# Netlify installs dependencies from package.json automatically, then bundles the function.
 [build]
-  publish = "."
+  publish = "public"
   command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[build.environment]
+  NODE_VERSION = "22"
 
 [[headers]]
   for = "/*"
@@ -13,4 +21,4 @@
 [[headers]]
   for = "/*.{css,js}"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=0, must-revalidate"

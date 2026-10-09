@@ -1,0 +1,17 @@
+{
+  "name": "plateful-calorie-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered calorie tracker: log meals in plain English, track intake vs. burn. Static site + Netlify Function calling the Claude API.",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "check": "node --check netlify/functions/analyze-meal.mjs && node --check public/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0"
+  }
+}

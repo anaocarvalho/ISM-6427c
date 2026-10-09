@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Plateful · AI Calorie Tracker</title>
+  <meta name="description" content="Log meals in plain English. AI counts the calories, protein, carbs and fat. Track intake vs. burn, 7-day trends and streaks." />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem("plateful.theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">🍽️</span>
+        <span class="brand-name">Plateful</span>
+      </div>
+
+      <nav class="tabs tabs-top" aria-label="Sections">
+        <button type="button" class="tab" data-tab="today" aria-current="page"><span aria-hidden="true">📅</span> Today</button>
+        <button type="button" class="tab" data-tab="trends"><span aria-hidden="true">📊</span> Trends</button>
+        <button type="button" class="tab" data-tab="badges"><span aria-hidden="true">🏆</span> Badges</button>
+        <button type="button" class="tab" data-tab="settings"><span aria-hidden="true">⚙️</span> Settings</button>
+      </nav>
+
+      <div class="theme-switch" role="radiogroup" aria-label="Theme">
+        <button type="button" role="radio" data-theme-choice="light" aria-label="Light theme" title="Light">☀️</button>
+        <button type="button" role="radio" data-theme-choice="dark" aria-label="Dark theme" title="Dark">🌙</button>
+        <button type="button" role="radio" data-theme-choice="system" aria-label="System theme" title="System">🖥️</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    <!-- ============ TODAY ============ -->
+    <section id="view-today" class="view" data-view="today">
+      <div class="hello">
+        <div>
+          <h1 id="greeting">Hello, Ana Cecília! 👋</h1>
+          <p id="greeting-sub" class="muted">What's on your plate today?</p>
+        </div>
+        <button type="button" id="streak-chip" class="streak-chip" title="Days in a row with at least one meal logged">
+          <span aria-hidden="true">🔥</span> <span id="streak-count">0</span>-day streak
+        </button>
+      </div>
+
+      <div class="date-nav card">
+        <button type="button" class="icon-btn" id="day-prev" aria-label="Previous day">‹</button>
+        <div class="date-label">
+          <strong id="day-label">Today</strong>
+          <span id="day-sub" class="muted small"></span>
+        </div>
+        <button type="button" class="icon-btn" id="day-next" aria-label="Next day">›</button>
+        <button type="button" class="link-btn" id="day-today" hidden>Jump to today</button>
+      </div>
+
+      <div class="grid-today">
+        <!-- Summary -->
+        <section class="card summary" aria-labelledby="summary-title">
+          <h2 id="summary-title" class="card-title">Daily summary</h2>
+          <div class="summary-body">
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 120 120" role="img" aria-labelledby="ring-label">
+                <title id="ring-label">Calories eaten versus goal</title>
+                <circle class="ring-track" cx="60" cy="60" r="52" />
+                <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="0 100" />
+              </svg>
+              <div class="ring-center">
+                <span class="ring-big" id="ring-eaten">0</span>
+                <span class="ring-small muted">of <span id="ring-goal">2,000</span> kcal</span>
+                <span class="ring-left" id="ring-left">2,000 left</span>
+              </div>
+            </div>
+
+            <div class="summary-stats">
+              <div class="stat-row"><span class="dot dot-intake" aria-hidden="true"></span><span>Eaten</span><strong id="sum-eaten">0</strong></div>
+              <div class="stat-row"><span class="dot dot-burned" aria-hidden="true"></span><span>Burned</span><strong id="sum-burned">—</strong></div>
+              <div class="stat-row"><span class="dot dot-net" aria-hidden="true"></span><span>Net</span><strong id="sum-net">—</strong></div>
+              <div id="balance-pill" class="balance-pill neutral">Log calories burned to see your balance</div>
+            </div>
+          </div>
+
+          <div class="macros" id="macros">
+            <div class="macro" data-macro="protein">
+              <div class="macro-head"><span>Protein</span><span class="muted small" id="m-protein">0 g</span></div>
+              <div class="bar"><span class="bar-fill macro-p" id="mb-protein"></span></div>
+            </div>
+            <div class="macro" data-macro="carbs">
+              <div class="macro-head"><span>Carbs</span><span class="muted small" id="m-carbs">0 g</span></div>
+              <div class="bar"><span class="bar-fill macro-c" id="mb-carbs"></span></div>
+            </div>
+            <div class="macro" data-macro="fat">
+              <div class="macro-head"><span>Fat</span><span class="muted small" id="m-fat">0 g</span></div>
+              <div class="bar"><span class="bar-fill macro-f" id="mb-fat"></span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Log a meal -->
+        <section class="card composer" aria-labelledby="composer-title">
+          <h2 id="composer-title" class="card-title">Log a meal</h2>
+
+          <div class="chips meal-types" role="radiogroup" aria-label="Meal type">
+            <button type="button" role="radio" class="chip" data-meal="breakfast">🌅 Breakfast</button>
+            <button type="button" role="radio" class="chip" data-meal="lunch">🥪 Lunch</button>
+            <button type="button" role="radio" class="chip" data-meal="dinner">🍝 Dinner</button>
+            <button type="button" role="radio" class="chip" data-meal="snack">🍎 Snack</button>
+          </div>
+
+          <form id="meal-form" autocomplete="off">
+            <label for="meal-text" class="sr-only">Describe what you ate, with amounts</label>
+            <textarea id="meal-text" rows="3" maxlength="1200" placeholder="e.g. 2 scrambled eggs, 1 slice sourdough with butter, a large oat latte"></textarea>
+            <div class="composer-foot">
+              <span class="muted small" id="char-count">0 / 1200</span>
+              <div class="composer-actions">
+                <button type="button" class="link-btn" id="manual-open">Enter manually</button>
+                <button type="submit" class="btn btn-primary" id="analyze-btn">✨ Analyze</button>
+              </div>
+            </div>
+          </form>
+
+          <div class="examples">
+            <span class="muted small">Try:</span>
+            <div class="chips" id="example-chips"></div>
+          </div>
+
+          <div class="memory" id="memory" hidden>
+            <button type="button" class="repeat-btn" id="repeat-btn" hidden>
+              <span class="repeat-icon" aria-hidden="true">↺</span>
+              <span class="repeat-text"><strong id="repeat-title">Same as yesterday</strong><span class="muted small" id="repeat-sub"></span></span>
+              <span class="pill" id="repeat-kcal"></span>
+            </button>
+            <div class="quick" id="quick-wrap" hidden>
+              <span class="muted small">⚡ One-tap re-log (no typing, no AI wait):</span>
+              <div class="chips" id="quick-chips"></div>
+            </div>
+          </div>
+
+          <div id="analyzing" class="analyzing" hidden aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <span id="analyzing-msg">Counting calories…</span>
+          </div>
+
+          <div id="composer-error" class="error" role="alert" hidden></div>
+
+          <div id="preview" class="preview" hidden>
+            <div class="preview-head">
+              <h3>Here's what I found</h3>
+              <span class="pill" id="preview-total">0 kcal</span>
+            </div>
+            <ul class="items" id="preview-items"></ul>
+            <p class="note" id="preview-note" hidden></p>
+            <div class="preview-actions">
+              <button type="button" class="btn" id="preview-discard">Discard</button>
+              <button type="button" class="btn btn-primary" id="preview-save">Add to log</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Burned -->
+        <section class="card burned" aria-labelledby="burned-title">
+          <h2 id="burned-title" class="card-title">Calories burned</h2>
+          <p class="muted small">Your total for the day (resting + active), e.g. from your watch or fitness app.</p>
+          <form id="burned-form" class="burned-form">
+            <label for="burned-input" class="sr-only">Calories burned</label>
+            <input id="burned-input" type="number" inputmode="numeric" min="0" max="10000" step="1" placeholder="e.g. 2300" />
+            <span class="unit">kcal</span>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </form>
+          <div class="chips burned-chips">
+            <button type="button" class="chip" data-burn-add="100">+100</button>
+            <button type="button" class="chip" data-burn-add="250">+250</button>
+            <button type="button" class="chip" data-burn-add="500">+500</button>
+            <button type="button" class="chip" id="burn-copy">↺ Same as yesterday</button>
+            <button type="button" class="chip" id="burn-clear">Clear</button>
+          </div>
+        </section>
+
+        <!-- Meals -->
+        <section class="card meals" aria-labelledby="meals-title">
+          <div class="card-title-row">
+            <h2 id="meals-title" class="card-title">Meals</h2>
+            <span class="muted small" id="meals-count"></span>
+          </div>
+          <div id="meal-list"></div>
+          <div id="meals-empty" class="empty">
+            <div class="empty-emoji" aria-hidden="true">🥗</div>
+            <p><strong>Nothing logged yet.</strong></p>
+            <p class="muted small">Describe a meal above, like "a turkey sandwich and an apple", and the AI does the math.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============ TRENDS ============ -->
+    <section id="view-trends" class="view" data-view="trends" hidden>
+      <div class="hello">
+        <div>
+          <h1>Your last 7 days</h1>
+          <p class="muted" id="trend-range"></p>
+        </div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile"><span class="tile-label">Avg intake</span><span class="tile-value" id="t-intake">—</span><span class="tile-sub muted" id="t-intake-sub"></span></div>
+        <div class="tile"><span class="tile-label">Avg burned</span><span class="tile-value" id="t-burned">—</span><span class="tile-sub muted" id="t-burned-sub"></span></div>
+        <div class="tile tile-balance" id="t-balance-tile"><span class="tile-label">Avg daily balance</span><span class="tile-value" id="t-balance">—</span><span class="tile-sub" id="t-balance-sub"></span></div>
+        <div class="tile"><span class="tile-label">Projected weekly change</span><span class="tile-value" id="t-weight">—</span><span class="tile-sub muted">at this pace</span></div>
+      </div>
+
+      <section class="card chart-card" aria-labelledby="chart-title">
+        <div class="card-title-row">
+          <h2 id="chart-title" class="card-title">Intake vs. burned</h2>
+          <button type="button" class="link-btn" id="chart-table-toggle" aria-pressed="false">Show table</button>
+        </div>
+        <div class="legend" aria-hidden="true">
+          <span><i class="sw sw-intake"></i>Intake</span>
+          <span><i class="sw sw-burned"></i>Burned</span>
+          <span><i class="sw sw-goal"></i>Intake goal</span>
+        </div>
+        <div class="chart" id="chart"></div>
+        <div class="chart-tooltip" id="chart-tooltip" role="status" hidden></div>
+        <div class="table-wrap" id="chart-table" hidden></div>
+      </section>
+
+      <div class="grid-2">
+        <section class="card" aria-labelledby="macro-week-title">
+          <h2 id="macro-week-title" class="card-title">Average macros</h2>
+          <div class="stack-bar" id="macro-stack" role="img" aria-label="Average share of calories by macro"></div>
+          <div class="macro-legend" id="macro-legend"></div>
+        </section>
+        <section class="card" aria-labelledby="insights-title">
+          <h2 id="insights-title" class="card-title">Insights</h2>
+          <ul class="insights" id="insights"></ul>
+        </section>
+      </div>
+
+      <div id="trends-empty" class="card empty" hidden>
+        <div class="empty-emoji" aria-hidden="true">📈</div>
+        <p><strong>Your trends will show up here.</strong></p>
+        <p class="muted small">Log a few meals and your calories burned, or explore with a sample week.</p>
+        <button type="button" class="btn" data-action="sample">Load a sample week</button>
+      </div>
+    </section>
+
+    <!-- ============ BADGES ============ -->
+    <section id="view-badges" class="view" data-view="badges" hidden>
+      <div class="hello">
+        <div>
+          <h1>Badges</h1>
+          <p class="muted" id="badge-progress">0 of 0 unlocked</p>
+        </div>
+      </div>
+      <div class="badges" id="badge-grid"></div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section id="view-settings" class="view" data-view="settings" hidden>
+      <div class="hello"><div><h1>Settings</h1><p class="muted">Make Plateful yours.</p></div></div>
+
+      <div class="grid-2">
+        <form class="card settings-form" id="settings-form">
+          <h2 class="card-title">Profile &amp; goals</h2>
+          <label>Name <input id="s-name" type="text" maxlength="40" placeholder="Your first name" /></label>
+          <label>Daily calorie goal (kcal) <input id="s-goal" type="number" min="800" max="6000" step="10" inputmode="numeric" /></label>
+          <label>Daily protein goal (g) <input id="s-protein" type="number" min="0" max="400" step="1" inputmode="numeric" /></label>
+          <fieldset class="units">
+            <legend>Weight units</legend>
+            <label class="inline"><input type="radio" name="units" value="lb" /> Pounds</label>
+            <label class="inline"><input type="radio" name="units" value="kg" /> Kilograms</label>
+          </fieldset>
+          <button type="submit" class="btn btn-primary">Save settings</button>
+        </form>
+
+        <section class="card">
+          <h2 class="card-title">Your data</h2>
+          <p class="muted small">Your log lives only in this browser. Meal descriptions are sent to the AI for analysis and aren't stored on a server. Export a backup to move it to another device.</p>
+          <div class="stack">
+            <button type="button" class="btn" id="export-btn">⬇️ Export backup (JSON)</button>
+            <label class="btn file-btn">⬆️ Import backup<input type="file" id="import-input" accept="application/json,.json" hidden /></label>
+            <button type="button" class="btn" data-action="sample">🧪 Load a sample week</button>
+            <button type="button" class="btn btn-danger" id="reset-btn">🗑️ Erase all data</button>
+          </div>
+          <p class="muted small disclaimer">Estimates come from AI and may be off. Plateful isn't medical advice.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs tabs-bottom" aria-label="Sections">
+    <button type="button" class="tab" data-tab="today" aria-current="page"><span aria-hidden="true">📅</span><span>Today</span></button>
+    <button type="button" class="tab" data-tab="trends"><span aria-hidden="true">📊</span><span>Trends</span></button>
+    <button type="button" class="tab" data-tab="badges"><span aria-hidden="true">🏆</span><span>Badges</span></button>
+    <button type="button" class="tab" data-tab="settings"><span aria-hidden="true">⚙️</span><span>Settings</span></button>
+  </nav>
+
+  <!-- Onboarding -->
+  <dialog id="onboarding" class="dialog" aria-labelledby="ob-title">
+    <form method="dialog" id="onboarding-form">
+      <div class="ob-hero" aria-hidden="true">🍽️</div>
+      <h2 id="ob-title">Welcome, Ana Cecília! 👋</h2>
+      <p class="muted">Type what you ate like you'd text a friend. AI counts the calories and macros. Add what you burned and see if you're in a deficit or surplus.</p>
+      <label>What should we call you?<input id="ob-name" type="text" maxlength="40" placeholder="First name" /></label>
+      <label>Daily calorie goal
+        <div class="chips" id="ob-goal-chips">
+          <button type="button" class="chip" data-goal="1600">1,600</button>
+          <button type="button" class="chip" data-goal="1800">1,800</button>
+          <button type="button" class="chip" data-goal="2000">2,000</button>
+          <button type="button" class="chip" data-goal="2500">2,500</button>
+        </div>
+        <input id="ob-goal" type="number" min="800" max="6000" step="10" value="2000" inputmode="numeric" />
+      </label>
+      <div class="ob-actions">
+        <button type="button" class="btn" id="ob-sample">Explore with sample data</button>
+        <button type="submit" class="btn btn-primary" id="ob-start">Let's go →</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Manual entry -->
+  <dialog id="manual" class="dialog" aria-labelledby="manual-title">
+    <form method="dialog" id="manual-form">
+      <h2 id="manual-title">Add food manually</h2>
+      <label>Food <input id="mf-name" type="text" maxlength="80" required placeholder="e.g. Protein bar" /></label>
+      <div class="grid-4">
+        <label>kcal <input id="mf-cal" type="number" min="0" max="5000" required inputmode="numeric" /></label>
+        <label>Protein g <input id="mf-p" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
+        <label>Carbs g <input id="mf-c" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
+        <label>Fat g <input id="mf-f" type="number" min="0" max="500" step="0.1" inputmode="decimal" /></label>
+      </div>
+      <div class="ob-actions">
+        <button type="button" class="btn" id="manual-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add to log</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast-wrap" id="toasts" aria-live="polite"></div>
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -8,6 +8,8 @@
   const STORE_KEY = "plateful.v1";
   const THEME_KEY = "plateful.theme";
   const API_URL = "/api/analyze-meal";
+  // Bump when the AI parsing improves so older cached results aren't reused.
+  const PARSER_VERSION = 2;
   const MEALS = {
     breakfast: { label: "Breakfast", emoji: "🌅" },
     lunch: { label: "Lunch", emoji: "🥪" },
@@ -85,7 +87,7 @@
   let state = load();
   let viewDate = todayKey();
   let selectedMeal = guessMealType();
-  let pending = null; // analysis preview waiting for "Add to log"
+  let pending = null; // the just-logged meal whose breakdown is on screen
   let loadingTimer = null;
 
   const day = (k) => state.days[k] || { meals: [], burned: null };
@@ -232,7 +234,7 @@
   function findRemembered(text) {
     const n = norm(text);
     for (const k of Object.keys(state.days).sort().reverse()) {
-      const hit = day(k).meals.find((m) => norm(m.text) === n && !m.manual);
+      const hit = day(k).meals.find((m) => norm(m.text) === n && !m.manual && (m.v || 0) >= PARSER_VERSION);
       if (hit) return { meal: hit, key: k };
     }
     return null;
@@ -241,6 +243,7 @@
   function cloneMeal(m, type) {
     return {
       id: uid(),
+      v: m.v,
       type: type || m.type,
       text: m.text,
       time: Date.now(),
@@ -515,25 +518,21 @@
     el.hidden = !msg;
   }
 
-  async function analyze(text) {
+  async function analyze(text, { skipMemory = false } = {}) {
     showError("");
     hidePreview();
 
     // Already analyzed this exact meal before? Reuse it instantly.
-    const remembered = findRemembered(text);
+    const remembered = skipMemory ? null : findRemembered(text);
     if (remembered) {
-      const m = remembered.meal;
-      showPreview({
-        text,
-        items: m.items.map((it) => ({ ...it })),
-        notes: `Remembered from ${relDay(remembered.key)}, so no AI call needed.`,
-      });
+      logAnalysis(text, remembered.meal.items.map((it) => ({ ...it })),
+        `Remembered from ${relDay(remembered.key)}, so no AI wait. Tap “Re-analyze” if anything changed.`, true);
       return;
     }
 
     showLoading(true);
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 45000);
+    const timeout = setTimeout(() => ctrl.abort(), 60000);
     try {
       const res = await fetch(API_URL, {
         method: "POST",
@@ -543,12 +542,14 @@
       });
       let data = null;
       try { data = await res.json(); } catch (e) { /* non-JSON error page */ }
-      if (!res.ok || !data) {
-        throw new Error((data && data.error) || (res.status === 404
+      if (!res.ok || !data || !Array.isArray(data.items)) {
+        let msg = (data && data.error) || (res.status === 404
           ? "The AI function isn't available here. Deploy to Netlify (or run `netlify dev`) to analyze meals, or enter it manually."
-          : `Something went wrong (${res.status}). Please try again.`));
+          : `Something went wrong (${res.status}). Please try again.`);
+        if (data && data.detail) msg += ` (Details: ${data.detail})`;
+        throw new Error(msg);
       }
-      showPreview({ text, items: data.items, notes: data.notes });
+      logAnalysis(text, data.items, data.notes, false);
     } catch (err) {
       showError(err.name === "AbortError" ? "That took too long. Please try again." : err.message);
     } finally {
@@ -565,44 +566,76 @@
     return t;
   }
 
-  function showPreview(p) {
-    pending = p;
+  // Save the analyzed meal straight to the log, then show its breakdown with
+  // the option to remove items, undo, or re-analyze.
+  function logAnalysis(text, items, notes, remembered) {
+    const meal = {
+      id: uid(),
+      v: PARSER_VERSION,
+      type: selectedMeal,
+      text,
+      time: Date.now(),
+      items,
+      totals: totalsOf(items),
+      notes: notes || "",
+      manual: false,
+    };
+    const k = viewDate;
+    ensureDay(k).meals.push(meal);
+    save();
+    $("#meal-text").value = "";
+    updateCharCount();
+    pending = { mealId: meal.id, dayKey: k, text, remembered };
+    renderAll();
     renderPreview();
     $("#preview").hidden = false;
     $("#preview").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    toast(`${MEALS[meal.type].emoji} ${MEALS[meal.type].label} logged · ${items.length} item${items.length === 1 ? "" : "s"} · ${fmt(meal.totals.calories)} kcal`);
+    checkBadges();
+  }
+
+  function pendingMeal() {
+    if (!pending) return null;
+    return day(pending.dayKey).meals.find((m) => m.id === pending.mealId) || null;
   }
   function renderPreview() {
-    if (!pending) return;
-    const t = totalsOf(pending.items);
-    $("#preview-total").textContent = `${fmt(t.calories)} kcal`;
-    $("#preview-items").innerHTML = pending.items.map((it, i) => itemRow(it, i, pending.items.length > 1)).join("");
-    $("#preview-note").hidden = !pending.notes;
-    $("#preview-note").textContent = pending.notes || "";
+    const m = pendingMeal();
+    if (!m) { hidePreview(); return; }
+    $("#preview-title").textContent = `✓ Logged to ${MEALS[m.type].label}: ${m.items.length} item${m.items.length === 1 ? "" : "s"}`;
+    $("#preview-total").textContent = `${fmt(m.totals.calories)} kcal`;
+    $("#preview-items").innerHTML = m.items.map((it, i) => itemRow(it, i, m.items.length > 1)).join("");
+    $("#preview-note").hidden = !m.notes;
+    $("#preview-note").textContent = m.notes || "";
+    $("#preview-reanalyze").hidden = !pending.remembered;
   }
   function hidePreview() {
     pending = null;
     $("#preview").hidden = true;
   }
-  function savePreview() {
-    if (!pending || !pending.items.length) return;
-    const meal = {
-      id: uid(),
-      type: selectedMeal,
-      text: pending.text,
-      time: Date.now(),
-      items: pending.items,
-      totals: totalsOf(pending.items),
-      notes: pending.notes || "",
-      manual: !!pending.manual,
-    };
+  function removePendingItem(i) {
+    const m = pendingMeal();
+    if (!m) return;
+    m.items.splice(i, 1);
+    m.totals = totalsOf(m.items);
+    if (!m.items.length) { undoPending(); return; }
+    save();
+    renderAll();
+    renderPreview();
+  }
+  function undoPending() {
+    if (!pending) return;
+    const d = ensureDay(pending.dayKey);
+    const m = pendingMeal();
+    d.meals = d.meals.filter((x) => x.id !== pending.mealId);
+    save();
+    if (m) { $("#meal-text").value = m.text; updateCharCount(); }
     hidePreview();
-    $("#meal-text").value = "";
-    updateCharCount();
-    addMeals([meal], viewDate, `${MEALS[meal.type].emoji} ${MEALS[meal.type].label} logged · ${fmt(meal.totals.calories)} kcal`);
+    renderAll();
+    toast("Removed from your log");
   }
 
   function updateCharCount() {
-    $("#char-count").textContent = `${$("#meal-text").value.length} / 1200`;
+    $("#char-count").textContent = `${$("#meal-text").value.length} / 2000`;
   }
 
   // ---------- Trends ----------
@@ -869,6 +902,21 @@
     $$('input[name="units"]').forEach((r) => (r.checked = r.value === p.units));
   }
 
+  async function testConnection() {
+    const out = $("#test-ai-result");
+    out.hidden = false;
+    out.textContent = "Checking…";
+    try {
+      const res = await fetch(API_URL, { method: "GET" });
+      const data = await res.json().catch(() => null);
+      if (res.status === 404 || !data) out.textContent = "❌ The AI function isn't deployed at /api/analyze-meal. Check Netlify → Logs → Functions.";
+      else if (!data.hasKey) out.textContent = "❌ ANTHROPIC_API_KEY isn't set. Add it in Netlify → Site configuration → Environment variables, then redeploy.";
+      else out.textContent = `✅ Function is live and the API key is set (model: ${data.model}). If meals still fail, the error under the meal box shows why.`;
+    } catch (e) {
+      out.textContent = "❌ Couldn't reach the server. Are you offline?";
+    }
+  }
+
   function exportData() {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -903,7 +951,7 @@
   // A realistic past week so new visitors can see every feature.
   function loadSample() {
     const t = todayKey();
-    const M = (text, type, items) => ({ id: uid(), type, text, time: Date.now(), items, totals: totalsOf(items), notes: "", manual: false });
+    const M = (text, type, items) => ({ id: uid(), v: PARSER_VERSION, type, text, time: Date.now(), items, totals: totalsOf(items), notes: "", manual: false });
     const I = (name, quantity, emoji, calories, protein_g, carbs_g, fat_g) => ({ name, quantity, emoji, calories, protein_g, carbs_g, fat_g });
     const breakfasts = [
       () => M("2 scrambled eggs, 1 slice sourdough with butter, black coffee", "breakfast", [I("Scrambled eggs", "2 large", "🍳", 182, 12.6, 1.6, 13.4), I("Sourdough toast", "1 slice", "🍞", 120, 4.5, 23, 0.8), I("Butter", "1 tsp", "🧈", 34, 0, 0, 3.8), I("Black coffee", "12 oz", "☕", 2, 0.3, 0, 0)]),
@@ -949,6 +997,7 @@
     renderBurned();
     if (!$("#view-trends").hidden) renderTrends();
     if (!$("#view-badges").hidden) renderBadges();
+    if (pending) renderPreview();
   }
 
   // ---------- Events ----------
@@ -988,12 +1037,20 @@
     });
     $("#preview-items").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-remove]");
-      if (!btn || !pending) return;
-      pending.items.splice(Number(btn.dataset.remove), 1);
-      if (!pending.items.length) hidePreview(); else renderPreview();
+      if (btn) removePendingItem(Number(btn.dataset.remove));
     });
-    $("#preview-save").addEventListener("click", savePreview);
-    $("#preview-discard").addEventListener("click", hidePreview);
+    $("#preview-done").addEventListener("click", hidePreview);
+    $("#preview-undo").addEventListener("click", undoPending);
+    $("#preview-reanalyze").addEventListener("click", () => {
+      const text = pending && pending.text;
+      if (!text) return;
+      const d = ensureDay(pending.dayKey);
+      d.meals = d.meals.filter((x) => x.id !== pending.mealId);
+      save();
+      hidePreview();
+      renderAll();
+      analyze(text, { skipMemory: true });
+    });
 
     // Manual entry
     const manual = $("#manual");
@@ -1057,6 +1114,7 @@
       toast("Settings saved ✅");
     });
     $("#export-btn").addEventListener("click", exportData);
+    $("#test-ai-btn").addEventListener("click", testConnection);
     $("#import-input").addEventListener("change", (e) => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ""; });
     $("#reset-btn").addEventListener("click", () => {
       if (!confirm("Erase all meals, settings and badges from this browser? Export a backup first if you want to keep them.")) return;

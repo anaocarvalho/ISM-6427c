@@ -4,7 +4,7 @@ Type what you ate the way you'd text a friend ("2 scrambled eggs, toast with but
 
 ## Features
 
-- **AI meal logging.** Plain-text meals go to Claude and come back as structured JSON. You review the breakdown (and can remove items) before it's added.
+- **AI meal logging.** Type a sentence, a comma list, or one food per line. Claude returns every item as structured JSON, and the meal is saved right away. The breakdown card lets you remove an item, undo, or re-analyze.
 - **Meal memory.** One tap for *"Same breakfast as yesterday"*, a recent-meals row for quick re-logging, favorites (⭐), "Had it again", and "Copy all of yesterday's meals". If you type a meal you've logged before, the saved result is reused with no AI call.
 - **Calories burned** for each day, with +100/+250/+500 buttons and "Same as yesterday".
 - **Daily summary.** A progress ring against your goal, eaten/burned/net totals, a deficit/surplus badge, and macro bars.
@@ -38,9 +38,11 @@ Type what you ate the way you'd text a friend ("2 scrambled eggs, toast with but
 ### How the function calls Claude
 
 - Model `claude-opus-5-5` with **structured outputs** (`output_config.format` with a JSON schema), so the response is always valid JSON in the expected shape.
-- `effort: "low"` keeps responses fast and cheap. Nutrition lookup is simple extraction, and it helps the request finish within Netlify's function time limit.
+- **Complete itemization.** The function splits the text into lines and comma-separated entries and passes that checklist to Claude. The schema has Claude list every food it sees (`foods_mentioned`) before estimating each one. If the answer has fewer items than the checklist, the function retries once.
+- `effort: "medium"` for accuracy. Answers well within Netlify's 60-second function limit.
 - **Server-side refusal fallback is on** (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`). If a safety classifier declines a request, the API retries it on Anthropic's recommended fallback model.
-- Totals are recomputed on the server from the items, and the input is capped at 1,200 characters.
+- Totals are recomputed on the server from the items, and the input is capped at 2,000 characters.
+- `GET /api/analyze-meal` is a health check (`hasKey`, `model`). It's wired to **Settings → Test AI connection**. Failed requests show the API's error detail under the meal box.
 
 ## Run locally
 

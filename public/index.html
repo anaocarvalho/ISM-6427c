@@ -125,12 +125,12 @@
 
           <form id="meal-form" autocomplete="off">
             <label for="meal-text" class="sr-only">Describe what you ate, with amounts</label>
-            <textarea id="meal-text" rows="3" maxlength="1200" placeholder="e.g. 2 scrambled eggs, 1 slice sourdough with butter, a large oat latte"></textarea>
+            <textarea id="meal-text" rows="3" maxlength="2000" placeholder="List everything, e.g. 2 scrambled eggs, 1 slice sourdough with butter, half an avocado, a large oat latte (one per line works too)"></textarea>
             <div class="composer-foot">
-              <span class="muted small" id="char-count">0 / 1200</span>
+              <span class="muted small" id="char-count">0 / 2000</span>
               <div class="composer-actions">
                 <button type="button" class="link-btn" id="manual-open">Enter manually</button>
-                <button type="submit" class="btn btn-primary" id="analyze-btn">✨ Analyze</button>
+                <button type="submit" class="btn btn-primary" id="analyze-btn">✨ Analyze &amp; log</button>
               </div>
             </div>
           </form>
@@ -159,16 +159,17 @@
 
           <div id="composer-error" class="error" role="alert" hidden></div>
 
-          <div id="preview" class="preview" hidden>
+          <div id="preview" class="preview" hidden aria-live="polite">
             <div class="preview-head">
-              <h3>Here's what I found</h3>
+              <h3 id="preview-title">✓ Logged</h3>
               <span class="pill" id="preview-total">0 kcal</span>
             </div>
             <ul class="items" id="preview-items"></ul>
             <p class="note" id="preview-note" hidden></p>
             <div class="preview-actions">
-              <button type="button" class="btn" id="preview-discard">Discard</button>
-              <button type="button" class="btn btn-primary" id="preview-save">Add to log</button>
+              <button type="button" class="link-btn" id="preview-reanalyze" hidden>↻ Re-analyze</button>
+              <button type="button" class="btn" id="preview-undo">Undo</button>
+              <button type="button" class="btn btn-primary" id="preview-done">Done</button>
             </div>
           </div>
         </section>
@@ -294,6 +295,8 @@
           <div class="stack">
             <button type="button" class="btn" id="export-btn">⬇️ Export backup (JSON)</button>
             <label class="btn file-btn">⬆️ Import backup<input type="file" id="import-input" accept="application/json,.json" hidden /></label>
+            <button type="button" class="btn" id="test-ai-btn">🩺 Test AI connection</button>
+            <p class="muted small" id="test-ai-result" role="status" hidden></p>
             <button type="button" class="btn" data-action="sample">🧪 Load a sample week</button>
             <button type="button" class="btn btn-danger" id="reset-btn">🗑️ Erase all data</button>
           </div>

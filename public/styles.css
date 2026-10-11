@@ -651,3 +651,34 @@ h1, h2, h3, .ring-big, .tile-value, .hs-value { font-family: "Plus Jakarta Sans"
 .lang-toggle span.on { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
 .ob-lang { justify-content: center; }
 @media (max-width: 380px) { .theme-switch button { width: 30px; } .brand-name { font-size: 1rem; } }
+
+/* ============ Account & sync ============ */
+.acct-btn {
+  position: relative; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface-2); display: grid; place-items: center; font-size: 1rem; flex: none;
+}
+.acct-btn:hover { border-color: var(--accent); }
+.acct-dot { position: absolute; right: 1px; bottom: 1px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); border: 2px solid var(--bg); }
+.acct-btn.on { background: linear-gradient(135deg, var(--grad-a), var(--grad-b)); border-color: transparent; }
+.acct-btn.on .acct-dot { background: #22c55e; }
+.acct-btn.syncing .acct-dot { background: #eab308; animation: pulse 1s ease-in-out infinite; }
+.acct-btn.error .acct-dot { background: var(--danger); }
+@keyframes pulse { 50% { transform: scale(1.35); } }
+.auth-modes { margin-top: 2px; }
+.auth-forgot { justify-self: start; font-size: 0.88rem; padding: 0; }
+.auth-msg { padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.9rem; background: var(--surface-2); }
+.auth-msg.err { background: var(--danger-soft); color: var(--danger); }
+.auth-msg.ok { background: var(--deficit-soft); color: var(--deficit); }
+#auth-form input[type="email"], #auth-form input[type="password"] {
+  width: 100%; border: 1px solid var(--border); background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 16px;
+}
+#auth-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.sync-card #sync-who { margin-bottom: 4px; overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .topbar-inner { gap: 6px; padding: 10px 12px; }
+  .top-controls { gap: 5px; }
+  .brand-icon { display: none; }
+  .theme-switch button { width: 28px; height: 28px; font-size: 0.85rem; }
+  .lang-toggle span { padding: 6px 6px; }
+  .acct-btn { width: 34px; height: 34px; }
+}

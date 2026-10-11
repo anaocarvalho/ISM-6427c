@@ -1,8 +1,8 @@
 // Plateful service worker: makes the app open fast and work as an installed app.
 // Pages: network first (so updates show up), cached copy when offline.
 // Static files: cached copy first, refreshed in the background. The AI endpoint is never cached.
-const CACHE = "plateful-v4";
-const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/i18n.js", "/manifest.webmanifest", "/icon.svg", "/icons/apple-touch-icon.png", "/icons/icon-192.png"];
+const CACHE = "plateful-v5";
+const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/i18n.js", "/config.js", "/manifest.webmanifest", "/icon.svg", "/icons/apple-touch-icon.png", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

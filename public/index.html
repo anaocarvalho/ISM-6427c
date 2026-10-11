@@ -52,6 +52,9 @@
       </nav>
 
       <div class="top-controls">
+        <button type="button" class="acct-btn" id="acct-btn" data-i18n-aria="acct.signedOut" aria-label="Sign in to sync" title="Sign in to sync">
+          <span aria-hidden="true">👤</span><span class="acct-dot" aria-hidden="true"></span>
+        </button>
         <button type="button" class="lang-toggle" id="lang-toggle" data-i18n-aria="lang.switchTo" data-i18n-title="lang.switchTo" aria-label="Mudar para português" title="Mudar para português">
           <span data-lang-opt="en">EN</span><span data-lang-opt="pt">PT</span>
         </button>
@@ -397,6 +400,22 @@
           <p class="muted small disclaimer" data-i18n="set.disclaimer"></p>
         </section>
 
+        <section class="card sync-card" id="sync-card">
+          <h2 class="card-title" data-i18n="sync.title">☁️ Account &amp; sync</h2>
+          <div id="sync-out">
+            <p class="muted small" data-i18n="sync.outDesc"></p>
+            <button type="button" class="btn btn-primary" id="sync-signin" data-i18n="sync.signinBtn">🔐 Sign in or create account</button>
+          </div>
+          <div id="sync-in" hidden>
+            <p id="sync-who"></p>
+            <p class="muted small" id="sync-status" role="status"></p>
+            <div class="stack">
+              <button type="button" class="btn" id="sync-now" data-i18n="sync.now">🔄 Sync now</button>
+              <button type="button" class="btn" id="sync-signout" data-i18n="sync.signout">Sign out</button>
+            </div>
+          </div>
+        </section>
+
         <section class="card install-card" id="install-card">
           <h2 class="card-title" data-i18n="inst.title">📱 Put Plateful on your iPhone</h2>
           <ol class="install-steps">
@@ -443,6 +462,26 @@
       <div class="ob-actions">
         <button type="button" class="btn" id="ob-sample" data-i18n="ob.sample">Explore with sample data</button>
         <button type="submit" class="btn btn-primary" id="ob-start" data-i18n="ob.start">Let's go →</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Sign in / create account -->
+  <dialog id="auth" class="dialog" aria-labelledby="auth-title">
+    <form id="auth-form" novalidate>
+      <h2 id="auth-title" data-i18n="auth.title">☁️ Sync across devices</h2>
+      <p class="muted small" id="auth-desc" data-i18n="auth.desc"></p>
+      <div class="chips auth-modes" role="radiogroup" id="auth-modes">
+        <button type="button" role="radio" class="chip" data-auth-mode="signin" data-i18n="auth.signin">Sign in</button>
+        <button type="button" role="radio" class="chip" data-auth-mode="signup" data-i18n="auth.signup">Create account</button>
+      </div>
+      <label id="auth-email-row"><span data-i18n="auth.email">Email</span><input id="auth-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" /></label>
+      <label id="auth-pass-row"><span id="auth-pass-label" data-i18n="auth.password">Password</span><input id="auth-pass" type="password" autocomplete="current-password" minlength="6" data-i18n-ph="auth.passwordHint" /></label>
+      <button type="button" class="link-btn auth-forgot" id="auth-forgot" data-i18n="auth.forgot">Forgot password?</button>
+      <div id="auth-msg" class="auth-msg" role="alert" hidden></div>
+      <div class="ob-actions">
+        <button type="button" class="btn" id="auth-close" data-i18n="auth.close">Close</button>
+        <button type="submit" class="btn btn-primary" id="auth-submit">Sign in</button>
       </div>
     </form>
   </dialog>
@@ -510,6 +549,7 @@
   <div class="toast-wrap" id="toasts" aria-live="polite"></div>
   <div class="confetti" id="confetti" aria-hidden="true"></div>
 
+  <script src="config.js"></script>
   <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>

@@ -14,6 +14,7 @@ Type what you ate the way you'd text a friend ("2 scrambled eggs, toast with but
 - **Recipes.** Paste a recipe (e.g. banana bread that makes 16 slices). Claude totals every ingredient, and you can then log "1 slice", "1/16", "half" or any amount with exact math. Typing "1/16 of the banana bread" in the meal box works too, with no AI call.
 - **English & Português (Brasil).** Switch with the EN/PT toggle. The whole interface changes, and the AI writes food names, amounts and notes in the language you choose, whichever language you type in.
 - **iPhone app.** Open the site in Safari → Share → **Add to Home Screen**. It opens full-screen with its own icon (web app manifest, Apple touch icon, service worker).
+- **Email sign-in & sync (Supabase).** Tap 👤 to create an account or sign in with email + password. Your meals, calories burned, recipes, favorites and badges follow you across computer, phone and tablet. Changes merge across devices: deletions stay deleted, and the newest edit wins.
 - **Light / Dark / System** themes. Your choice is remembered.
 - **Responsive** on phone (bottom tab bar), tablet and desktop. Installable to the home screen (web manifest).
 - **Your data.** Everything is stored in your browser (localStorage). You can export or import a JSON backup, or erase it all. A manual-entry fallback works without AI.
@@ -26,6 +27,7 @@ Type what you ate the way you'd text a friend ("2 scrambled eggs, toast with but
 | `public/styles.css` | Theme tokens (light/dark/system), responsive layout |
 | `public/app.js` | State, rendering, meal memory, recipes, chart, badges |
 | `public/i18n.js` | All interface text in English and Portuguese |
+| `public/config.js` | Public Supabase URL + publishable key for sign-in and sync |
 | `public/sw.js`, `public/manifest.webmanifest`, `public/icons/` | Installable app: service worker, manifest, home-screen icons |
 | `public/weather/` | The earlier Boca Weather app, still available at `/weather/` |
 | `netlify/functions/analyze-meal.mjs` | Serverless function at `POST /api/analyze-meal` that calls Claude |
@@ -59,3 +61,15 @@ npx netlify-cli dev        # serves public/ and the function at http://localhost
 Put `ANTHROPIC_API_KEY=...` in a local `.env` file (it's git-ignored) or export it in your shell. Opening `public/index.html` with a plain static server also works, but meal analysis then falls back to manual entry.
 
 *Estimates come from AI and may be off. Plateful isn't medical advice.*
+
+## Accounts & sync (Supabase)
+
+- **Project:** `Plateful` (ref `qfashxhmlwwwmvovelpb`, US East) in your Supabase org.
+- **Table:** `public.plateful_state` holds one row per user (`user_id`, `data` jsonb, `updated_at`). Row-level security lets each signed-in user read and write only their own row. The publishable key in `public/config.js` is safe to ship to browsers.
+- **How sync works:** every change is saved on the device first. When signed in, the app pulls the account copy, merges it with the device copy, and pushes the result. It syncs again when you reopen the app. Demo "sample week" data is dropped when you sign in to an account that already has real data.
+
+**One-time Supabase dashboard settings** (Authentication → URL Configuration):
+1. Set **Site URL** to your Netlify address (e.g. `https://your-site.netlify.app`).
+2. Add the same address to **Redirect URLs**.
+
+These make the confirmation and password-reset email links open your app. To skip email confirmation, turn off **Confirm email** under Authentication → Sign In / Providers → Email. The built-in email sender only allows a few emails per hour. For real users, set up custom SMTP under Authentication → Emails.

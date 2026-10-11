@@ -78,11 +78,13 @@
 
   function setLang(lang, { persist = true } = {}) {
     LANG = lang === "pt" ? "pt" : "en";
-    if (persist) { state.profile.lang = LANG; save(); }
+    if (persist && state.profile.lang !== LANG) { state.profile.lang = LANG; state.profile.updatedAt = Date.now(); save(); }
     applyStaticText();
     renderAll();
     renderBadges();
     renderRecipes();
+    renderAccount();
+    if ($("#auth").open) renderAuthMode();
     if (!$("#view-settings").hidden) fillSettings();
     if ($("#onboarding").open) updateOnboardingTitle();
   }
@@ -126,6 +128,8 @@
     favorites: [],
     recipes: [],
     badges: {},
+    deleted: { meals: {}, recipes: {}, favs: {} }, // tombstones so deletions sync across devices
+    resetAt: 0,
   });
 
   function load() {
@@ -137,14 +141,22 @@
       const merged = { ...d, ...s, profile: { ...d.profile, ...(s.profile || {}) } };
       if (!Array.isArray(merged.recipes)) merged.recipes = [];
       if (!Array.isArray(merged.favorites)) merged.favorites = [];
+      merged.deleted = { meals: {}, recipes: {}, favs: {}, ...(merged.deleted || {}) };
       return merged;
     } catch (e) {
       return defaultState();
     }
   }
-  function save() {
+  function saveLocal() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* storage full or blocked */ }
   }
+  // Every change is saved on this device, then synced to the account when signed in.
+  function save() {
+    saveLocal();
+    if (typeof Cloud !== "undefined") Cloud.schedule();
+  }
+  const tomb = (kind, key) => { state.deleted[kind][key] = Date.now(); };
+  const untomb = (kind, key) => { delete state.deleted[kind][key]; };
 
   let state = load();
   LANG = state.profile.lang || detectLang();
@@ -331,6 +343,7 @@
       label: t("toast.undo"),
       run: () => {
         d.meals = d.meals.filter((m) => !ids.includes(m.id));
+        ids.forEach((id) => tomb("meals", id));
         save();
         renderAll();
       },
@@ -561,9 +574,11 @@
     const i = state.favorites.findIndex((f) => norm(f.text) === n);
     if (i >= 0) {
       state.favorites.splice(i, 1);
+      tomb("favs", n);
       toast(t("fav.removed"));
     } else {
-      state.favorites.unshift({ id: uid(), text: m.text, type: m.type, items: m.items, totals: m.totals, notes: m.notes || "", manual: !!m.manual, lang: m.lang, v: m.v, recipeId: m.recipeId });
+      untomb("favs", n);
+      state.favorites.unshift({ id: uid(), added: Date.now(), text: m.text, type: m.type, items: m.items, totals: m.totals, notes: m.notes || "", manual: !!m.manual, lang: m.lang, v: m.v, recipeId: m.recipeId });
       toast(t("fav.saved"));
     }
     save();
@@ -576,11 +591,12 @@
     const idx = d.meals.findIndex((m) => m.id === id);
     if (idx < 0) return;
     const [removed] = d.meals.splice(idx, 1);
+    tomb("meals", id);
     save();
     renderAll();
     toast(t("meal.deleted"), {
       label: t("toast.undo"),
-      run: () => { d.meals.splice(idx, 0, removed); save(); renderAll(); },
+      run: () => { d.meals.splice(idx, 0, removed); untomb("meals", id); save(); renderAll(); },
     });
   }
 
@@ -597,6 +613,7 @@
   function setBurned(v) {
     const d = ensureDay(viewDate);
     d.burned = v == null ? null : clamp(Math.round(v), 0, 10000);
+    d.burnedAt = Date.now();
     save();
     renderAll();
     checkBadges();
@@ -743,6 +760,7 @@
     if (!m) return;
     m.items.splice(i, 1);
     m.totals = totalsOf(m.items);
+    m.edited = Date.now();
     if (!m.items.length) { undoPending(); return; }
     save();
     renderAll();
@@ -753,6 +771,7 @@
     const d = ensureDay(pending.dayKey);
     const m = pendingMeal();
     d.meals = d.meals.filter((x) => x.id !== pending.mealId);
+    tomb("meals", pending.mealId);
     save();
     if (m) { $("#meal-text").value = m.text; updateCharCount(); }
     hidePreview();
@@ -1063,6 +1082,7 @@
         const d = defaultState();
         state = { ...d, ...s, profile: { ...d.profile, ...(s.profile || {}), onboarded: true } };
         if (!Array.isArray(state.recipes)) state.recipes = [];
+        state.deleted = { meals: {}, recipes: {}, favs: {}, ...(state.deleted || {}) };
         save();
         setLang(state.profile.lang || LANG);
         fillSettings();
@@ -1078,7 +1098,7 @@
   function loadSample() {
     const today = todayKey();
     const L = (en, pt) => (LANG === "pt" ? pt : en);
-    const M = (text, type, items) => ({ id: uid(), v: PARSER_VERSION, lang: LANG, type, text, time: Date.now(), items, totals: totalsOf(items), notes: "", manual: false });
+    const M = (text, type, items) => ({ id: uid(), sample: true, v: PARSER_VERSION, lang: LANG, type, text, time: Date.now(), items, totals: totalsOf(items), notes: "", manual: false });
     const I = (name, quantity, emoji, calories, protein_g, carbs_g, fat_g) => ({ name, quantity, emoji, calories, protein_g, carbs_g, fat_g });
     const breakfasts = [
       () => M(L("2 scrambled eggs, 1 slice sourdough with butter, black coffee", "2 ovos mexidos, 1 fatia de pão de fermentação natural com manteiga, café preto"), "breakfast", [
@@ -1374,6 +1394,7 @@
       const n = Math.round(Number(v));
       if (n >= 1 && n <= 500) {
         r.servings = n;
+        r.updated = Date.now();
         save();
         renderRecipes();
         renderComposer();
@@ -1382,10 +1403,11 @@
     } else if (act === "delete") {
       const idx = state.recipes.indexOf(r);
       state.recipes.splice(idx, 1);
+      tomb("recipes", r.id);
       save();
       renderRecipes();
       renderComposer();
-      toast(t("rec.deleted", { name: r.name }), { label: t("toast.undo"), run: () => { state.recipes.splice(idx, 0, r); save(); renderRecipes(); renderComposer(); } });
+      toast(t("rec.deleted", { name: r.name }), { label: t("toast.undo"), run: () => { state.recipes.splice(idx, 0, r); untomb("recipes", r.id); save(); renderRecipes(); renderComposer(); } });
     }
   }
 
@@ -1539,6 +1561,298 @@
     }
   }
 
+
+  // ---------- Account sign-in & cloud sync (Supabase) ----------
+  // One row per user in public.plateful_state holds the whole log as JSON.
+  // Sync = pull the account copy, merge it with this device, push the result.
+
+  // Merge two copies of the log. Deletions win (tombstones), newer edits win,
+  // and anything from before a reset ("Erase all data") is dropped.
+  function mergeStates(a, b) {
+    const resetAt = Math.max(a.resetAt || 0, b.resetAt || 0);
+    const maxMap = (x = {}, y = {}) => {
+      const out = { ...x };
+      for (const k in y) out[k] = Math.max(out[k] || 0, y[k]);
+      return out;
+    };
+    const ad = a.deleted || {}, bd = b.deleted || {};
+    const cutoff = Date.now() - 90 * 864e5; // forget tombstones after 90 days
+    const prune = (m) => Object.fromEntries(Object.entries(m).filter(([, v]) => v > cutoff));
+    const deleted = { meals: prune(maxMap(ad.meals, bd.meals)), recipes: prune(maxMap(ad.recipes, bd.recipes)), favs: prune(maxMap(ad.favs, bd.favs)) };
+    const stamp = (m) => m.edited || m.time || 0;
+
+    const days = {};
+    for (const k of new Set([...Object.keys(a.days || {}), ...Object.keys(b.days || {})])) {
+      const da = (a.days || {})[k] || { meals: [] }, db = (b.days || {})[k] || { meals: [] };
+      const byId = new Map();
+      for (const m of [...(db.meals || []), ...(da.meals || [])]) {
+        const prev = byId.get(m.id);
+        if (!prev || stamp(m) >= stamp(prev)) byId.set(m.id, m);
+      }
+      const meals = [...byId.values()].filter((m) => !deleted.meals[m.id] && (m.time || 0) >= resetAt).sort((x, y) => (x.time || 0) - (y.time || 0));
+      const pick = (da.burnedAt || 0) >= (db.burnedAt || 0) ? da : db;
+      let burned = pick.burned != null ? pick.burned : (da.burned != null && !da.burnedAt ? da.burned : db.burned != null && !db.burnedAt ? db.burned : null);
+      let burnedAt = pick.burnedAt || 0;
+      if (burnedAt < resetAt) { burned = null; burnedAt = 0; }
+      if (meals.length || burned != null) days[k] = { meals, burned: burned ?? null, burnedAt };
+    }
+
+    const recipesById = new Map();
+    for (const r of [...(b.recipes || []), ...(a.recipes || [])]) {
+      const prev = recipesById.get(r.id);
+      if (!prev || (r.updated || r.created || 0) >= (prev.updated || prev.created || 0)) recipesById.set(r.id, r);
+    }
+    const recipes = [...recipesById.values()].filter((r) => !deleted.recipes[r.id] && (r.created || 0) >= resetAt).sort((x, y) => (y.created || 0) - (x.created || 0));
+
+    const favs = new Map();
+    for (const f of [...(b.favorites || []), ...(a.favorites || [])]) {
+      const n = norm(f.text);
+      if ((deleted.favs[n] || 0) >= (f.added || 0) && deleted.favs[n]) continue;
+      if ((f.added || 0) < resetAt) continue;
+      if (!favs.has(n) || (f.added || 0) > (favs.get(n).added || 0)) favs.set(n, f);
+    }
+
+    const badges = { ...(b.badges || {}) };
+    for (const id in a.badges || {}) badges[id] = badges[id] ? Math.min(badges[id], a.badges[id]) : a.badges[id];
+
+    const profile = ((b.profile || {}).updatedAt || 0) > ((a.profile || {}).updatedAt || 0) ? { ...a.profile, ...b.profile } : { ...b.profile, ...a.profile };
+    return { ...b, ...a, profile, days, recipes, favorites: [...favs.values()], badges, deleted, resetAt };
+  }
+
+  const stripSample = (s) => {
+    const days = {};
+    for (const k in s.days) {
+      const meals = s.days[k].meals.filter((m) => !m.sample);
+      const sampleOnly = s.days[k].meals.length && !meals.length;
+      if (meals.length || (s.days[k].burned != null && !sampleOnly)) days[k] = { ...s.days[k], meals };
+    }
+    return { ...s, days };
+  };
+  const hasRealData = (s) => Object.values(s.days || {}).some((d) => (d.meals || []).some((m) => !m.sample)) || (s.recipes || []).length > 0;
+
+  var Cloud = {
+    client: null,
+    user: null,
+    status: "idle", // idle | syncing | ok | error
+    lastSynced: null,
+    lastError: "",
+    timer: null,
+    running: false,
+    again: false,
+    firstSync: false,
+
+    async init() {
+      const cfg = window.PLATEFUL_CONFIG || {};
+      if (!cfg.supabaseUrl || !cfg.supabaseKey) return;
+      try {
+        if (!window.supabase) await loadScript(cfg.supabaseScript);
+        this.client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "plateful.auth" },
+        });
+      } catch (e) {
+        this.client = null;
+        renderAccount();
+        return;
+      }
+      this.client.auth.onAuthStateChange((event, session) => {
+        const wasIn = !!this.user;
+        this.user = session ? session.user : null;
+        renderAccount();
+        if (event === "PASSWORD_RECOVERY") { openAuth("reset"); return; }
+        if (this.user && (!wasIn || event === "SIGNED_IN")) {
+          if (!wasIn) this.firstSync = true;
+          setTimeout(() => this.sync(), 0); // outside the auth callback, as Supabase recommends
+        }
+      });
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") this.sync(); });
+      window.addEventListener("online", () => this.sync());
+      setInterval(() => { if (document.visibilityState === "visible") this.sync(); }, 120000);
+    },
+
+    schedule() {
+      if (!this.user) return;
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.sync(), 1200);
+    },
+
+    async sync({ overwrite = false } = {}) {
+      if (!this.client || !this.user) return;
+      if (this.running) { this.again = true; return; }
+      this.running = true;
+      this.setStatus("syncing");
+      try {
+        const uidv = this.user.id;
+        let next = state;
+        if (!overwrite) {
+          const { data, error } = await this.client.from("plateful_state").select("data").eq("user_id", uidv).maybeSingle();
+          if (error) throw error;
+          if (data && data.data && Object.keys(data.data).length) {
+            let local = state;
+            if (this.firstSync && hasRealData(data.data)) local = stripSample(local); // don't mix demo data into a real account
+            next = mergeStates(local, data.data);
+          }
+        }
+        this.firstSync = false;
+        const before = JSON.stringify(state);
+        const changed = JSON.stringify(next) !== before;
+        state = next;
+        saveLocal();
+        if (changed) refreshAfterSync();
+        const { error: upErr } = await this.client.from("plateful_state").upsert({ user_id: uidv, data: state }, { onConflict: "user_id" });
+        if (upErr) throw upErr;
+        this.lastSynced = Date.now();
+        this.setStatus("ok");
+      } catch (e) {
+        this.lastError = (e && (e.message || e.code)) || "error";
+        this.setStatus("error");
+      } finally {
+        this.running = false;
+        if (this.again) { this.again = false; this.sync(); }
+      }
+    },
+
+    setStatus(s) { this.status = s; renderAccount(); },
+  };
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement("script");
+      el.src = src;
+      el.async = true;
+      el.crossOrigin = "anonymous";
+      el.onload = resolve;
+      el.onerror = reject;
+      document.head.appendChild(el);
+    });
+  }
+
+  function refreshAfterSync() {
+    if (state.profile.lang && state.profile.lang !== LANG) { setLang(state.profile.lang, { persist: false }); return; }
+    renderAll();
+    renderRecipes();
+    renderBadges();
+    if (!$("#view-settings").hidden) fillSettings();
+  }
+
+  function renderAccount() {
+    const btn = $("#acct-btn");
+    const u = Cloud.user;
+    btn.classList.toggle("on", !!u);
+    btn.classList.toggle("syncing", !!u && Cloud.status === "syncing");
+    btn.classList.toggle("error", !!u && Cloud.status === "error");
+    const label = u ? t("acct.signedIn", { email: u.email }) : t("acct.signedOut");
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+    $("#sync-out").hidden = !!u;
+    $("#sync-in").hidden = !u;
+    if (u) {
+      $("#sync-who").innerHTML = t("sync.signedInAs", { email: esc(u.email) });
+      const st = Cloud.status === "syncing" ? t("sync.syncing")
+        : Cloud.status === "error" ? t("sync.error", { msg: Cloud.lastError })
+        : Cloud.lastSynced ? t("sync.last", { time: new Date(Cloud.lastSynced).toLocaleTimeString(LOC(), { hour: "numeric", minute: "2-digit" }) })
+        : t("sync.never");
+      $("#sync-status").textContent = st;
+    }
+  }
+
+  // ----- Sign-in dialog -----
+  let authMode = "signin"; // signin | signup | reset
+  function authError(err) {
+    const code = err && (err.code || "");
+    const key = "autherr." + code;
+    const msg = t(key);
+    return msg !== key ? msg : (err && err.message) || "Error";
+  }
+  function showAuthMsg(text, kind) {
+    const el = $("#auth-msg");
+    el.textContent = text || "";
+    el.className = "auth-msg" + (kind ? " " + kind : "");
+    el.hidden = !text;
+  }
+  function renderAuthMode() {
+    $$("[data-auth-mode]").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.authMode === authMode)));
+    const reset = authMode === "reset";
+    $("#auth-modes").hidden = reset;
+    $("#auth-email-row").hidden = reset;
+    $("#auth-forgot").hidden = authMode !== "signin";
+    $("#auth-desc").hidden = reset;
+    $("#auth-pass-label").textContent = reset ? t("auth.newPassword") : t("auth.password");
+    $("#auth-pass").autocomplete = authMode === "signin" ? "current-password" : "new-password";
+    $("#auth-submit").textContent = reset ? t("auth.setPassword") : authMode === "signup" ? t("auth.signup") : t("auth.signin");
+  }
+  function openAuth(mode = "signin") {
+    if (!Cloud.client) { toast(t("auth.unavailable")); return; }
+    authMode = mode;
+    showAuthMsg("");
+    $("#auth-pass").value = "";
+    renderAuthMode();
+    if (!$("#auth").open) $("#auth").showModal();
+    setTimeout(() => (mode === "reset" ? $("#auth-pass") : $("#auth-email")).focus(), 50);
+  }
+  async function submitAuth() {
+    const email = $("#auth-email").value.trim();
+    const password = $("#auth-pass").value;
+    const btn = $("#auth-submit");
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = t("auth.working");
+    showAuthMsg("");
+    try {
+      if (authMode === "reset") {
+        const { error } = await Cloud.client.auth.updateUser({ password });
+        if (error) throw error;
+        showAuthMsg(t("auth.passwordUpdated"), "ok");
+        setTimeout(() => $("#auth").close(), 1200);
+      } else if (authMode === "signup") {
+        const { data, error } = await Cloud.client.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + "/" } });
+        if (error) throw error;
+        if (data.session) { $("#auth").close(); toast(t("auth.welcome", { email })); }
+        else if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) showAuthMsg(t("autherr.user_already_exists"), "err");
+        else showAuthMsg(t("auth.checkEmail", { email }), "ok");
+      } else {
+        const { error } = await Cloud.client.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        $("#auth").close();
+        toast(t("auth.welcome", { email }));
+      }
+    } catch (err) {
+      showAuthMsg(authError(err), "err");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+  async function forgotPassword() {
+    const email = $("#auth-email").value.trim();
+    if (!email) { showAuthMsg(t("auth.needEmail"), "err"); $("#auth-email").focus(); return; }
+    const { error } = await Cloud.client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/" });
+    showAuthMsg(error ? authError(error) : t("auth.resetSent", { email }), error ? "err" : "ok");
+  }
+
+  function bindAccount() {
+    $("#acct-btn").addEventListener("click", () => {
+      if (Cloud.user) showTab("settings");
+      else openAuth("signin");
+    });
+    $("#sync-signin").addEventListener("click", () => openAuth("signin"));
+    $("#sync-now").addEventListener("click", async () => {
+      await Cloud.sync();
+      if (Cloud.status === "ok") toast(t("sync.done"));
+    });
+    $("#sync-signout").addEventListener("click", async () => {
+      await Cloud.sync();
+      await Cloud.client.auth.signOut();
+      Cloud.user = null;
+      Cloud.lastSynced = null;
+      renderAccount();
+      toast(t("auth.signedOut"));
+    });
+    $$("[data-auth-mode]").forEach((b) => b.addEventListener("click", () => { authMode = b.dataset.authMode; showAuthMsg(""); renderAuthMode(); }));
+    $("#auth-form").addEventListener("submit", (e) => { e.preventDefault(); submitAuth(); });
+    $("#auth-forgot").addEventListener("click", forgotPassword);
+    $("#auth-close").addEventListener("click", () => $("#auth").close());
+  }
+
   // ---------- Render ----------
   function renderAll() {
     renderGreeting();
@@ -1585,6 +1899,7 @@
       if (!text) return;
       const d = ensureDay(pending.dayKey);
       d.meals = d.meals.filter((x) => x.id !== pending.mealId);
+      tomb("meals", pending.mealId);
       save();
       hidePreview();
       renderAll();
@@ -1646,6 +1961,7 @@
       p.goal = clamp(Number($("#s-goal").value) || 2000, 800, 6000);
       p.proteinGoal = clamp(Number($("#s-protein").value) || 0, 0, 400);
       p.units = ($('input[name="units"]:checked') || {}).value || "lb";
+      p.updatedAt = Date.now();
       const lang = ($('input[name="lang"]:checked') || {}).value || LANG;
       save();
       setLang(lang);
@@ -1661,7 +1977,10 @@
       const lang = LANG;
       state = defaultState();
       state.profile.lang = lang;
-      save();
+      state.profile.updatedAt = Date.now();
+      state.resetAt = Date.now(); // other devices drop anything older when they sync
+      saveLocal();
+      Cloud.sync({ overwrite: true });
       viewDate = todayKey();
       renderAll();
       renderRecipes();
@@ -1708,6 +2027,7 @@
     state.profile.goal = clamp(Number($("#ob-goal").value) || 2000, 800, 6000);
     state.profile.lang = LANG;
     state.profile.onboarded = true;
+    state.profile.updatedAt = Date.now();
     save();
     renderAll();
     setTimeout(() => $("#meal-text").focus({ preventScroll: true }), 50);
@@ -1718,7 +2038,10 @@
   bind();
   bindRecipes();
   initInstall();
+  bindAccount();
   applyStaticText();
+  renderAccount();
+  Cloud.init();
   renderAll();
   renderBadges();
   renderRecipes();

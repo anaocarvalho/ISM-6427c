@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>TrendScout · Trending short-form videos</title>
+  <meta name="description" content="Search and browse trending short-form videos on TikTok, YouTube Shorts and Instagram Reels. Compare views, likes and engagement in one place." />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f7f7fa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f1014" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to results</a>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./" aria-label="TrendScout home">
+        <img class="brand-icon" src="icon.svg" alt="" width="28" height="28" />
+        <span class="brand-name">TrendScout</span>
+      </a>
+      <span class="credits" id="credits" hidden>
+        <span class="credits-dot" aria-hidden="true"></span>
+        <span id="credits-text">Credits: —</span>
+      </span>
+    </div>
+  </header>
+
+  <div class="wrap controls">
+    <div class="mode-switch" role="group" aria-label="Mode">
+      <button type="button" class="mode-btn" id="mode-search" data-mode="search" aria-pressed="false">Search</button>
+      <button type="button" class="mode-btn" id="mode-trending" data-mode="trending" aria-pressed="true">Trending</button>
+    </div>
+
+    <form class="search-panel" id="search-form" role="search" hidden>
+      <div class="search-row">
+        <label class="visually-hidden" for="q">Search videos</label>
+        <input type="search" id="q" name="q" placeholder="Search a topic, e.g. “morning routine”" autocomplete="off" maxlength="100" enterkeyhint="search" />
+        <button type="submit" class="btn btn-primary" id="search-btn">Search</button>
+      </div>
+      <fieldset class="platform-checks">
+        <legend class="visually-hidden">Platforms to search</legend>
+        <label class="check check-tiktok"><input type="checkbox" name="platform" value="tiktok" checked /> <span>TikTok</span></label>
+        <label class="check check-youtube"><input type="checkbox" name="platform" value="youtube" checked /> <span>YouTube</span></label>
+        <label class="check check-instagram"><input type="checkbox" name="platform" value="instagram" checked /> <span>Instagram</span></label>
+      </fieldset>
+      <p class="form-hint" id="form-hint" role="alert" hidden></p>
+    </form>
+
+    <div class="trend-tabs" id="trend-tabs" role="tablist" aria-label="Trending platform">
+      <button type="button" class="trend-tab" role="tab" id="tab-tiktok" data-platform="tiktok" aria-selected="true" aria-controls="main">TikTok</button>
+      <button type="button" class="trend-tab" role="tab" id="tab-youtube" data-platform="youtube" aria-selected="false" aria-controls="main" tabindex="-1">YouTube Shorts</button>
+      <button type="button" class="trend-tab" role="tab" id="tab-instagram" data-platform="instagram" aria-selected="false" aria-controls="main" tabindex="-1">Instagram Reels</button>
+    </div>
+  </div>
+
+  <main id="main" class="wrap" tabindex="-1">
+    <div class="toolbar" id="toolbar">
+      <p class="summary" id="summary" aria-live="polite"></p>
+      <div class="toolbar-right">
+        <div class="chips" id="chips" role="group" aria-label="Filter by platform"></div>
+        <label class="sort">
+          <span>Sort</span>
+          <select id="sort">
+            <option value="default">Default</option>
+            <option value="views">Most views</option>
+            <option value="likes">Most likes</option>
+            <option value="engagement">Engagement</option>
+            <option value="newest">Newest</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="notices" id="notices"></div>
+
+    <ul class="grid" id="grid" aria-busy="false"></ul>
+
+    <div class="empty" id="empty" hidden>
+      <p class="empty-title" id="empty-title">No videos found</p>
+      <p class="empty-text" id="empty-text">Try a different search or pick another platform.</p>
+    </div>
+  </main>
+
+  <footer class="wrap footer">
+    <p>Data from public TikTok, YouTube and Instagram posts. Stats may lag a few minutes behind the platforms.</p>
+  </footer>
+
+  <dialog class="details" id="details" aria-labelledby="details-title">
+    <div class="details-inner">
+      <header class="details-head">
+        <div class="details-meta">
+          <span class="badge" id="details-badge"></span>
+          <h2 class="details-title" id="details-title">Video details</h2>
+          <p class="details-author" id="details-author"></p>
+        </div>
+        <button type="button" class="icon-btn" id="details-close" aria-label="Close details">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+        </button>
+      </header>
+      <div class="details-body" id="details-body">
+        <dl class="details-stats" id="details-stats"></dl>
+        <a class="btn btn-secondary details-open" id="details-open" target="_blank" rel="noopener noreferrer">Open original post <span aria-hidden="true">↗</span></a>
+        <section class="details-section" aria-labelledby="transcript-h">
+          <h3 id="transcript-h">Transcript</h3>
+          <div id="transcript" class="transcript" aria-live="polite"></div>
+        </section>
+        <section class="details-section" aria-labelledby="comments-h">
+          <h3 id="comments-h">Top comments</h3>
+          <div id="comments" aria-live="polite"></div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>

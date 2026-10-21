@@ -1,0 +1,73 @@
+{
+  "success": true,
+  "credits_remaining": 99,
+  "credits_charged": 1,
+  "reels": [
+    {
+      "id": "4000819054877393649",
+      "pk": "4000819054877393649",
+      "shortcode": "DeFw7uwlMLx",
+      "url": "https://www.instagram.com/reel/DeFw7uwlMLx/",
+      "caption": "Impatiently waiting for #UFC335...\n\nThe countdown is on to @CharlesDoBronxs vs @DiegoLopesMMA\n\n[ LIVE DEC 12 on @ParamountPlus ]",
+      "taken_at": "2026-10-04T23:00:03.000Z",
+      "media_type": 2,
+      "product_type": "clips",
+      "video_url": "https://scontent.cdninstagram.com/example.mp4",
+      "video_versions": [
+        {
+          "type": 101,
+          "url": "https://scontent.cdninstagram.com/example.mp4"
+        }
+      ],
+      "image_url": "https://scontent.cdninstagram.com/example.jpg",
+      "image_versions2": {
+        "additional_candidates": {
+          "first_frame": {
+            "url": "https://scontent.cdninstagram.com/example.jpg"
+          }
+        },
+        "candidates": [
+          {
+            "url": "https://scontent.cdninstagram.com/example.jpg",
+            "height": 1920,
+            "width": 1080
+          }
+        ]
+      },
+      "original_width": 1080,
+      "original_height": 1920,
+      "has_audio": true,
+      "like_count": 423127,
+      "comment_count": 1623,
+      "play_count": 5112349,
+      "ig_play_count": null,
+      "clips_metadata": {
+        "music_info": null,
+        "original_sound_info": {
+          "audio_asset_id": "28770083305965221",
+          "original_audio_title": "Original audio",
+          "ig_artist": {
+            "username": "ufc",
+            "id": "22832340"
+          },
+          "is_explicit": false,
+          "should_mute_audio": false,
+          "consumption_info": {
+            "should_mute_audio_reason": "",
+            "is_trending_in_clips": false
+          },
+          "audio_filter_infos": null
+        }
+      },
+      "user": {
+        "id": "17841401450200356",
+        "pk": "22832340",
+        "username": "ufc",
+        "full_name": "UFC",
+        "profile_pic_url": "https://scontent.cdninstagram.com/example.jpg",
+        "is_verified": true,
+        "is_private": false
+      }
+    }
+  ]
+}

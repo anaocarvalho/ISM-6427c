@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "credits_remaining": 1000000,
+  "credits_charged": 1,
+  "videoId": "bjVIDXPP7Uk",
+  "type": "video",
+  "url": "https://www.youtube.com/watch?v=bjVIDXPP7Uk",
+  "transcript": [
+    {
+      "text": "welcome back to the hell farm and the",
+      "startMs": "160",
+      "endMs": "1920",
+      "startTimeText": "0:00"
+    },
+    {
+      "text": "backyard trails we built these jumps two",
+      "startMs": "1920",
+      "endMs": "3919",
+      "startTimeText": "0:01"
+    }
+  ],
+  "transcript_only_text": "welcome back to the hell farm and the backyard trails we built these jumps two years ago and last year we just kind of rebuilt them and this year......",
+  "language": "English"
+}

@@ -1,0 +1,87 @@
+{
+  "success": true,
+  "credits_remaining": 1000000,
+  "credits_charged": 1,
+  "aweme_list": [
+    {
+      "aweme_id": "7540000301621841183",
+      "desc": "#hudsonvalley #fallgetaway #farm #upstateny #resort ",
+      "create_time": 1755543133,
+      "url": "https://www.tiktok.com/@breannafriedman0/photo/7540000301621841183",
+      "statistics": {
+        "aweme_id": "7540000301621841183",
+        "comment_count": 646,
+        "digg_count": 71423,
+        "download_count": 130,
+        "play_count": 1443873,
+        "share_count": 8440,
+        "forward_count": 0,
+        "lose_count": 0,
+        "lose_comment_count": 0,
+        "whatsapp_share_count": 37,
+        "collect_count": 21957,
+        "repost_count": 0
+      },
+      "region": "US",
+      "is_ad": false,
+      "author": {
+        "nickname": "Bre 🤍",
+        "avatar_thumb": {
+          "url_list": [
+            "https://p19-pu-sign-useast8.tiktokcdn-us.com/tos-useast8-avt-0068-tx2/3bc038986117debaa55c18bae5685e18~tplv-tiktokx-cropcenter-q:100:100:q70.heic?dr=8835&idc=useast5&ps=87d6e48a&refresh_token=22f3402b&s=FEED&sc=avatar&shcp=1a816805&shp=d05b14bd&t=223449c4&x-expires=1756335600&x-signature=vQBsMRRY5xPAgpNt%2F6JchCzoVDE%3D"
+          ]
+        },
+        "avatar_medium": {
+          "url_list": [
+            "https://p19-pu-sign-useast8.tiktokcdn-us.com/tos-useast8-avt-0068-tx2/3bc038986117debaa55c18bae5685e18~tplv-tiktokx-cropcenter-q:720:720:q70.heic?dr=8836&idc=useast5&ps=87d6e48a&refresh_token=93846dfc&s=FEED&sc=avatar&shcp=1a816805&shp=d05b14bd&t=223449c4&x-expires=1756335600&x-signature=y49Gf4w80feFtWOJCykL7x2c20Q%3D"
+          ]
+        }
+      },
+      "video": {
+        "cover": {
+          "url_list": [
+            "https://p19-pu-sign-useast8.tiktokcdn-us.com/tos-useast8-i-photomode-tx2/3a1c4f9217414c3c95dd8d25c2dd8d13~tplv-photomode-image-cover:640:0:q70.webp?dr=12229&refresh_token=df32aa50&x-expires=1757545200&x-signature=zurwCGa5E9ieLV%2FaQHxx19%2FvpJY%3D&t=5897f7ec&ps=d5b8ac02&shp=d05b14bd&shcp=1a816805&idc=useast5&s=FEED&biz_tag=tt_photomode&sc=cover"
+          ]
+        }
+      },
+      "image_post_info": {
+        "images": [
+          {
+            "display_image": {
+              "url_list": [
+                "https://p19-pu-sign-useast8.tiktokcdn-us.com/tos-useast8-i-photomode-tx2/3a1c4f9217414c3c95dd8d25c2dd8d13~tplv-photomode-sr-vqe2:1080:0:1080:0:q75.webp?dr=10952&refresh_token=0efd0e37&x-expires=1757545200&x-signature=uEKcmDy5CeI9%2BCTYKvVleyhFFfc%3D&t=5897f7ec&ps=28cf8ac7&shp=d05b14bd&shcp=1a816805&idc=useast5&s=FEED&biz_tag=tt_photomode&sc=image"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "aweme_id": "7540968798585670968",
+      "desc": "Thrilling 3D motorcycle chases in the city. Evade cops at top speed!",
+      "create_time": 1755768714,
+      "url": "https://www.tiktok.com/@lyngame.52/video/7540968798585670968",
+      "statistics": {
+        "aweme_id": "7540968798585670968",
+        "comment_count": 27,
+        "digg_count": 6035,
+        "download_count": 72,
+        "play_count": 589406,
+        "share_count": 192,
+        "forward_count": 0,
+        "lose_count": 0,
+        "lose_comment_count": 0,
+        "whatsapp_share_count": 6,
+        "collect_count": 442,
+        "repost_count": 0
+      },
+      "region": "VN",
+      "is_ad": false,
+      "author": {
+        "unique_id": "lyngame.52",
+        "nickname": "lyngame.52"
+      },
+      "video": {}
+    }
+  ]
+}

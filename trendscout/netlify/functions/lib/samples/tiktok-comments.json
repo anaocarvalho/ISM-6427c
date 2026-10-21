@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "credits_remaining": 1000000,
+  "cursor": 20,
+  "has_more": 1,
+  "total": 269,
+  "comments": [
+    {
+      "cid": "7463276288959824682",
+      "aweme_id": "7463250363559218474",
+      "text": "Mesa and Scottsdale are like 2 different planets",
+      "digg_count": 1015,
+      "create_time": 1737679448,
+      "reply_comment_total": 9,
+      "user": {
+        "unique_id": "tmoneyhoney18",
+        "nickname": "T"
+      }
+    }
+  ]
+}

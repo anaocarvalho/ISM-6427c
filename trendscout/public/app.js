@@ -405,6 +405,7 @@ function renderSummary() {
   }
   if (state.mode === "search" && !state.query) return;
   const n = state.results.length;
+  if (n === 0 && (state.fatal || Object.keys(state.errors).length)) return;
   const count = el("strong", { text: `${fullFmt.format(n)} video${n === 1 ? "" : "s"}` });
   if (state.mode === "search") s.append(count, " for ", el("strong", { text: `“${state.query}”` }));
   else s.append(count, ` trending on ${TREND_LABEL[state.trend]}`);

@@ -769,3 +769,7 @@ main:focus { outline: none; }
   .badge, .chip[aria-pressed="true"], .mode-btn[aria-pressed="true"] { border: 1px solid CanvasText; }
 }
 .card-title { font-size: inherit; font-weight: inherit; }
+@media (max-width: 420px) {
+  .trend-tab { padding: 10px 9px 12px; font-size: 0.92rem; }
+  .trend-tab[aria-selected="true"]::after { left: 6px; right: 6px; }
+}

@@ -8,7 +8,7 @@ You are the frontend engineer for TrendScout, a web app for finding trending sho
 
 ## Stack and conventions
 
-- Plain HTML, CSS and ES-module JavaScript with no framework and no build step, matching the existing apps in `public/`. Keep TrendScout's files in its own folder under `public/`. Check the PRD and the user's answer for the exact path.
+- Plain HTML, CSS and ES-module JavaScript with no framework and no build step, matching the existing apps in the repo root `public/`. TrendScout is a separate project: its page lives in `trendscout/public/` (index.html, styles.css, app.js).
 - The page talks only to our own `/api/*` routes. Never call Scrape Creators from the browser and never reference an API key.
 - Define colors as CSS custom properties on `:root`, with a dark set under `@media (prefers-color-scheme: dark)`. Give the body an explicit background.
 

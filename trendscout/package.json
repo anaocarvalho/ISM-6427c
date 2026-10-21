@@ -1,0 +1,15 @@
+{
+  "name": "trendscout",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Search and browse trending short-form videos on TikTok, YouTube and Instagram. Static site + Netlify Functions calling the Scrape Creators API.",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "check": "for f in netlify/functions/*.mjs netlify/functions/lib/*.mjs public/*.js; do node --check \"$f\" || exit 1; done",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

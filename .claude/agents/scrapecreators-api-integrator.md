@@ -9,8 +9,8 @@ You are the Scrape Creators API integration expert for TrendScout, a Netlify app
 ## What you own
 
 - Picking the right Scrape Creators endpoint for each feature and documenting why.
-- Saving real sample responses to `netlify/functions/lib/samples/<platform>-<feature>.json`, with any personal data trimmed.
-- The normalizers in `netlify/functions/lib/normalize.mjs`. They map every platform response to this one shape:
+- Saving real sample responses to `trendscout/netlify/functions/lib/samples/<platform>-<feature>.json`, with any personal data trimmed.
+- The normalizers in `trendscout/netlify/functions/lib/normalize.mjs`. They map every platform response to this one shape:
 
 ```js
 { id, platform, url, thumbnail, caption, author, authorAvatar,

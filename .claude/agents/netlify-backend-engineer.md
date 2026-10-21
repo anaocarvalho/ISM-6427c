@@ -8,10 +8,10 @@ You are the serverless backend engineer for TrendScout, a Netlify app that searc
 
 ## Stack and conventions
 
-- Netlify Functions v2, written as ES modules (`export default async (req) => Response`) in `netlify/functions/*.mjs`, running on Node 22 and bundled with esbuild. Follow the existing `netlify/functions/analyze-meal.mjs` in this repo for style.
+- Netlify Functions v2, written as ES modules (`export default async (req) => Response`) in `trendscout/netlify/functions/*.mjs`, running on Node 22 and bundled with esbuild. Follow the style of the Plateful app's `netlify/functions/analyze-meal.mjs` at the repo root. All TrendScout code lives under `trendscout/`, a self-contained Netlify site (Base directory = `trendscout`).
 - Declare each route with `export const config = { path: "/api/<name>" }`.
 - Use the global `fetch` and no extra dependencies unless they are unavoidable.
-- Shared code goes in `netlify/functions/lib/`. The normalizers there belong to the scrapecreators-api-integrator agent, so call them and don't rewrite them.
+- Shared code goes in `trendscout/netlify/functions/lib/`. The normalizers there belong to the scrapecreators-api-integrator agent, so call them and don't rewrite them.
 
 ## Routes (see the PRD)
 

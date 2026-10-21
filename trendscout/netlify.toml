@@ -1,0 +1,25 @@
+# TrendScout: its own Netlify site. In Netlify set Base directory = "trendscout".
+# Static frontend in /public + serverless functions that call Scrape Creators.
+[build]
+  publish = "public"
+  command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=()"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+
+[[headers]]
+  for = "/*.{css,js}"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

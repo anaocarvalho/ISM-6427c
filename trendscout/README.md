@@ -27,6 +27,7 @@ This folder is a self-contained project, separate from the Plateful app at the r
 | `netlify/functions/lib/scrapecreators.mjs` | API calls, timeouts, cache, rate limit, validation |
 | `netlify/functions/lib/normalize.mjs` | Maps each platform's response to one video shape |
 | `netlify/functions/lib/samples/` | Example responses used by the tests |
+| `netlify/functions/api.test.mjs`, `lib/normalize.test.mjs` | Unit tests (`npm test`) |
 | `netlify.toml` | Publish dir, functions dir, security headers |
 
 ## Deploy to Netlify

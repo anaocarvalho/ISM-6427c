@@ -217,3 +217,12 @@ test("comments: capped at 20, blank text dropped", () => {
   assert.deepEqual(out[0], { author: "u0", text: "c0", likes: 0 });
   assert.deepEqual(normalizeComments("youtube", { comments: [{ content: "hi" }] }), [{ author: null, text: "hi", likes: null }]);
 });
+
+test("post links from the API are only trusted on the platform's own domain", () => {
+  const [ig] = normalizeVideos("instagram", { reels: [{ shortcode: "ABC123", url: "https://evil.com/instagram.com/reel/ABC123/" }] });
+  assert.equal(ig.url, "https://www.instagram.com/reel/ABC123/");
+  const [yt] = normalizeVideos("youtube", { videos: [{ id: "abcDEF12345", type: "video", url: "https://evil.com/watch?v=abcDEF12345" }] });
+  assert.equal(yt.url, "https://www.youtube.com/watch?v=abcDEF12345");
+  const [tt] = normalizeVideos("tiktok", { search_item_list: [{ aweme_info: { aweme_id: "7123", author: { unique_id: "me" }, url: "https://evil.com/tiktok.com/7123" } }] });
+  assert.equal(tt.url, "https://www.tiktok.com/@me/video/7123");
+});

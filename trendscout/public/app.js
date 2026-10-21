@@ -37,12 +37,12 @@ function safeImg(u) {
   return typeof u === "string" && /^data:image\/(png|jpeg|gif|webp|svg\+xml)[;,]/i.test(u) ? u : safeUrl(u);
 }
 
-/** Only allow http(s) URLs coming from the API into href/src. */
+/** Only allow https URLs coming from the API into href/src. */
 function safeUrl(u) {
   if (typeof u !== "string") return null;
   try {
     const url = new URL(u);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+    return url.protocol === "https:" ? url.href : null;
   } catch {
     return null;
   }
@@ -326,7 +326,11 @@ async function retryPlatform(platform, button) {
 
 // ---------- Credits ----------
 let creditsCtrl = null;
+let creditsAt = 0;
 async function refreshCredits() {
+  // At most once a minute: each refresh counts toward the per-IP rate limit.
+  if (Date.now() - creditsAt < 60 * 1000) return;
+  creditsAt = Date.now();
   if (creditsCtrl) creditsCtrl.abort();
   creditsCtrl = new AbortController();
   try {

@@ -235,14 +235,14 @@ test("video: transcript and comments fail independently", async () => {
   assert.ok(Array.isArray(body.comments));
 });
 
-test("credits: reads the balance defensively and is never cached", async () => {
+test("credits: reads the balance defensively and caches it for a minute", async () => {
   responder = () => ({ status: 200, body: { creditCount: 4321 } });
   const { status, body, res } = await call(credits, "/api/credits");
   assert.equal(status, 200);
   assert.deepEqual(body, { credits: 4321 });
   assert.equal(res.headers.get("Cache-Control"), "no-store");
   await call(credits, "/api/credits");
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
   assert.equal(calls[0].url.pathname, "/v1/account/credit-balance");
 
   assert.equal(readCredits({ credits: 7 }), 7);

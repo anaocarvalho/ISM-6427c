@@ -111,11 +111,11 @@ export function cacheSet(key, value, ttl = CACHE_TTL_MS) {
 }
 
 /** Returns the cached value for `key`, or runs `fn` and caches its result. Failures are not cached. */
-export async function cached(key, fn) {
+export async function cached(key, fn, ttl = CACHE_TTL_MS) {
   const hit = cacheGet(key);
   if (hit !== undefined) return hit;
   const value = await fn();
-  cacheSet(key, value);
+  cacheSet(key, value, ttl);
   return value;
 }
 
@@ -202,6 +202,11 @@ export function validateVideoUrl(platform, raw) {
   if (!VIDEO_HOSTS[platform]?.includes(u.hostname.toLowerCase())) {
     return { error: `That url isn't a ${PLATFORM_LABELS[platform]} link.` };
   }
+  // Drop the fragment and query string (except YouTube's ?v=) so tracking or
+  // cache-busting variants of one video share a cache entry.
+  u.hash = "";
+  const v = u.pathname === "/watch" ? u.searchParams.get("v") : null;
+  u.search = v ? `?v=${encodeURIComponent(v)}` : "";
   return { value: u.toString() };
 }
 

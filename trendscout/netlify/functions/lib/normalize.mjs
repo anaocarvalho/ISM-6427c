@@ -141,6 +141,16 @@ function seconds(v) {
   return null;
 }
 
+/** True when `u` is a URL on `domain` itself or one of its subdomains. */
+function onDomain(u, domain) {
+  try {
+    const host = new URL(u).hostname.toLowerCase();
+    return host === domain || host.endsWith("." + domain);
+  } catch {
+    return false;
+  }
+}
+
 function https(u) {
   if (typeof u !== "string") return null;
   let s = u.trim();
@@ -242,7 +252,7 @@ function tiktokVideo(raw) {
   const givenUrl = https(a.url) || https(typeof a.share_url === "string" ? a.share_url.split("?")[0] : null);
   const handle = str(first(author.unique_id, author.uniqueId, tiktokHandleFromUrl(givenUrl)));
   // Only trust a given link that points at this post.
-  let url = givenUrl && /tiktok\.com\//i.test(givenUrl) && givenUrl.includes(id) ? givenUrl : null;
+  let url = givenUrl && onDomain(givenUrl, "tiktok.com") && givenUrl.includes(id) ? givenUrl : null;
   if (!url) url = `https://www.tiktok.com/@${handle ? encodeURIComponent(handle) : ""}/video/${id}`;
 
   const stats = isObj(a.statistics) ? a.statistics : isObj(a.stats) ? a.stats : {};
@@ -296,7 +306,7 @@ function youtubeVideo(v, fromShortsList) {
   if (!id || !/^[\w-]{6,}$/.test(id)) return null;
 
   const isShort = fromShortsList || v.type === "short" || v.type === "shorts" || /\/shorts\//.test(v.url || "");
-  const url = isShort ? `https://www.youtube.com/shorts/${id}` : https(v.url) || `https://www.youtube.com/watch?v=${id}`;
+  const url = isShort ? `https://www.youtube.com/shorts/${id}` : (onDomain(https(v.url), "youtube.com") ? https(v.url) : null) || `https://www.youtube.com/watch?v=${id}`;
 
   const ch = isObj(v.channel) ? v.channel : isObj(v.author) ? v.author : {};
   let handle = str(ch.handle);
@@ -343,7 +353,7 @@ function instagramVideo(raw) {
   const r = isObj(raw?.media) ? raw.media : isObj(raw?.node) ? raw.node : raw;
   if (!isObj(r)) return null;
   const code = str(first(r.shortcode, r.code));
-  const givenUrl = https(r.url) && /instagram\.com\//i.test(r.url) ? https(r.url) : null;
+  const givenUrl = onDomain(https(r.url), "instagram.com") ? https(r.url) : null;
   const codeFromUrl = givenUrl?.match(/\/(?:reel|reels|p|tv)\/([\w-]+)/)?.[1] ?? null;
   const shortcode = code ?? codeFromUrl;
   const id = str(first(shortcode, r.id, r.pk));

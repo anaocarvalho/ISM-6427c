@@ -1,7 +1,7 @@
 // Netlify Function: GET /api/credits
 // Returns the Scrape Creators credit balance: { credits: number|null }.
-// Never cached, so the number is always current.
-import { callApi, errorResponse, guard, json, missingKey, safeMessage } from "./lib/scrapecreators.mjs";
+// Cached for 60 seconds so page loads don't each cost an upstream call.
+import { cached, callApi, errorResponse, guard, json, missingKey, safeMessage } from "./lib/scrapecreators.mjs";
 
 const FIELDS = ["creditCount", "credit_count", "credits", "creditBalance", "credit_balance", "balance", "remainingCredits", "remaining_credits"];
 
@@ -24,8 +24,12 @@ export default async (req, context) => {
   if (noKey) return noKey;
 
   try {
-    const data = await callApi("/v1/account/credit-balance", {}, { label: "Scrape Creators" });
-    return json(200, { credits: readCredits(data) });
+    const credits = await cached(
+      "credits",
+      async () => readCredits(await callApi("/v1/account/credit-balance", {}, { label: "Scrape Creators" })),
+      60 * 1000,
+    );
+    return json(200, { credits });
   } catch (error) {
     return errorResponse(502, safeMessage(error, "Couldn't load the credit balance"));
   }

@@ -32,6 +32,11 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+/** Thumbnails may also be inline data: images (allowed by the CSP img-src). */
+function safeImg(u) {
+  return typeof u === "string" && /^data:image\/(png|jpeg|gif|webp|svg\+xml)[;,]/i.test(u) ? u : safeUrl(u);
+}
+
 /** Only allow http(s) URLs coming from the API into href/src. */
 function safeUrl(u) {
   if (typeof u !== "string") return null;
@@ -470,7 +475,7 @@ function card(v) {
 
   // Thumbnail
   const thumb = el("div", { class: `thumb p-${v.platform}` });
-  const src = safeUrl(v.thumbnail);
+  const src = safeImg(v.thumbnail);
   if (src) {
     const img = el("img", {
       src, loading: "lazy", decoding: "async", referrerpolicy: "no-referrer",

@@ -191,6 +191,25 @@ test("search: failures are not cached", async () => {
   assert.equal(calls.length, 2);
 });
 
+test("search: merges sample results from all platforms sorted by views desc", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const sample = async (name) => {
+    try { return JSON.parse(await readFile(new URL(`./lib/samples/${name}.json`, import.meta.url), "utf8")); } catch { return {}; }
+  };
+  const bodies = {
+    tiktok: await sample("tiktok-search"), youtube: await sample("youtube-search"), instagram: await sample("instagram-search"),
+  };
+  responder = (url) => ({ status: 200, body: bodies[["tiktok", "youtube", "instagram"].find((p) => url.pathname.includes(p))] });
+  const { status, body } = await call(search, "/api/search?q=samples");
+  assert.equal(status, 200);
+  assert.deepEqual(body.errors, {});
+  const views = body.results.map((v) => v.views);
+  const firstNull = views.indexOf(null);
+  const counted = firstNull === -1 ? views : views.slice(0, firstNull);
+  if (firstNull !== -1) assert.ok(views.slice(firstNull).every((v) => v === null), "nulls last");
+  for (let i = 1; i < counted.length; i++) assert.ok(counted[i - 1] >= counted[i], "views desc");
+});
+
 test("byViewsDesc sorts by views with nulls last", () => {
   const list = [{ id: "a", views: null }, { id: "b", views: 5 }, { id: "c" }, { id: "d", views: 100 }, { id: "e", views: 0 }];
   assert.deepEqual(list.sort(byViewsDesc).map((v) => v.id), ["d", "b", "e", "a", "c"]);
